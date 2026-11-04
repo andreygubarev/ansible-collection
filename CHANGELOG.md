@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [2026.11.0] - 2026-11-05
+
+### Security
+- **Kubernetes host endpoints**: Protect IPv4 and IPv6 host-side API, kubelet, etcd, health, and Flannel VXLAN ports with a role-owned nftables table. New remote API connections are blocked; use SSH and local `kubectl`. Preserve established connections, node/pod API access, cluster addresses and certificates, and unrelated host and forwarded traffic. Restore protection on boot and reconcile missing or modified rules without restarting Kubernetes.
+
+### Fixed
+- **Shared nftables lifecycle**: Remove global ruleset flushing before Ubuntu package upgrades and on service stop or reload. Preserve tables managed by Kubernetes, CNI, Tailscale, and site policy. The Kubernetes role also configures the non-destructive loader when used independently.
+
+### Added
+- **Firewall integration checks**: Verify external blocking, pod API/DNS/metrics access, IPv6, UDP, source spoofing, established sessions, DNAT and transit forwarding, legacy-loader upgrades, rule repair, repeat application, and reboot persistence in disposable Incus VMs.
+
 ## [2026.10.27] - 2026-10-23
 
 ### Fixed
