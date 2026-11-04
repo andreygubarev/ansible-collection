@@ -1,0 +1,32 @@
+---
+- name: Test the nftables upgrade guard on the disposable VM
+  hosts: incus_test
+  become: true
+  gather_facts: false
+  tasks:
+    # Reproduce the old loader without restarting it. Kubernetes and the
+    # independently managed sentinel table must survive the subsequent upgrade.
+    - name: Test | Restore the legacy global flush configuration
+      ansible.builtin.lineinfile:
+        path: /etc/nftables.conf
+        line: flush ruleset
+        insertbefore: BOF
+
+    - name: Test | Restore the legacy stop command
+      ansible.builtin.file:
+        path: /etc/systemd/system/nftables.service.d/10-preserve-tables.conf
+        state: absent
+
+    - name: Test | Load the legacy service definition without restarting it
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: Test | Apply the pre-upgrade guard
+      ansible.builtin.include_role:
+        name: andreygubarev.com.ubuntu2604
+        tasks_from: 03-firewall-lifecycle.yml
+
+    - name: Test | Reproduce the package post-install service restart
+      ansible.builtin.systemd_service:
+        name: nftables
+        state: restarted

@@ -62,7 +62,7 @@ For remote port changes, connect on the current port while applying `ubuntu2604_
 | Upgrades | Safe upgrade and autoclean without autoremove; 10-minute APT lock timeout; report reboot requirements without rebooting |
 | Unattended updates | Security timers enabled; automatic reboot, shutdown installs, and needrestart service restarts disabled |
 | Logs | Persistent journald; 1 GiB cap, 30-day retention, 2 GiB free-space reserve on `/var/log`; volatile logs also bounded |
-| Firewall | Enable nftables, mask UFW, select nft-backed iptables tools; no filtering rules managed |
+| Firewall | Enable nftables without global ruleset flushing, mask UFW, select nft-backed iptables tools; no filtering rules managed |
 | Packages | Remove selected hardware agents, crash reporting, and interactive update helpers; retain Ubuntu Pro, `ubuntu-minimal`, storage/network integration, and administrative tools; install troubleshooting tools; no explicit Snap cleanup or reinstallation block |
 | Time / DNS | Use the stock chrony service and systemd-resolved stub; fallback DNS `1.1.1.1`, `1.0.0.1` does not replace per-link resolvers |
 | Login | Clear MOTD and mask `motd-news.timer` |

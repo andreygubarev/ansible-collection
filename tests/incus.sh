@@ -104,6 +104,37 @@ echo 'Applying Ubuntu, Kubernetes, Terraform tooling, and the Pi harness to the 
 apply -e "ubuntu2604_hostname=$vm" -e "kubernetes_cluster_name=$vm"
 verify
 
+echo 'Checking firewall repair and preservation of independently managed rules'
+incus --force-local exec "$vm" -T -- nft -f - <<'EOF'
+table inet collection_test {
+    chain untouched {
+        tcp dport 12345 accept
+    }
+}
+EOF
+foreign_rules=$(incus --force-local exec "$vm" -T -- nft list table inet collection_test)
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/firewall-upgrade.yml
+[[ "$(incus --force-local exec "$vm" -T -- nft list table inet collection_test)" == "$foreign_rules" ]]
+incus --force-local exec "$vm" -T -- systemctl reload nftables
+incus --force-local exec "$vm" -T -- systemctl restart nftables
+[[ "$(incus --force-local exec "$vm" -T -- nft list table inet collection_test)" == "$foreign_rules" ]]
+# An existing table can be incomplete even when its config file is unchanged.
+# Verify repair both for missing rules and for a completely missing table.
+for damage in 'flush chain inet andreygubarev_kubernetes input' 'delete table inet andreygubarev_kubernetes'; do
+    read -r -a nft_damage <<< "$damage"
+    incus --force-local exec "$vm" -T -- nft "${nft_damage[@]}"
+    # Positive control: the same external probe must reach the unfiltered API.
+    python3 - "$address" <<'PY'
+import socket
+import sys
+with socket.create_connection((sys.argv[1], 6443), timeout=3):
+    pass
+PY
+    apply --tags firewall
+    [[ "$(incus --force-local exec "$vm" -T -- nft list table inet collection_test)" == "$foreign_rules" ]]
+done
+verify
+
 echo 'Checking idempotence and saved configuration without first-run overrides'
 apply | tee "$workdir/idempotence.log"
 if ! grep -Eq '^testvm[[:space:]]*:.*changed=0[[:space:]]' "$workdir/idempotence.log"; then

@@ -1,0 +1,27 @@
+# Managed by andreygubarev.com.kubernetes
+# Source: https://github.com/andreygubarev/ansible-collection
+# Replace only this table in one transaction, including on the first load.
+add table inet andreygubarev_kubernetes
+delete table inet andreygubarev_kubernetes
+
+table inet andreygubarev_kubernetes {
+    chain input {
+        type filter hook input priority -10; policy accept;
+
+        # Preserve existing sessions and local control-plane communication.
+        ct state established accept
+        ct state related accept
+        iifname "lo" accept
+
+        # Match the CNI interface as well as the source network. A pod source
+        # address arriving on an external interface must not grant access.
+        iifname "cni0" ip saddr {{ kubernetes_pod_subnet }} tcp dport { 6443, 10250 } accept
+
+        # These ports belong to kubeadm, etcd, kubelet, and kube-proxy. Leave
+        # other host services and all forwarded application traffic unchanged.
+        tcp dport { 2379, 2380, 2381, 6443, 10248, 10249, 10250, 10255, 10256, 10257, 10259 } drop
+
+        # A single-node Flannel network has no external VXLAN peers.
+        udp dport 8472 drop
+    }
+}
