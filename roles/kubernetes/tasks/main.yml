@@ -8,6 +8,9 @@
 - name: Prerequisite | Import base packages
   ansible.builtin.import_tasks: 02-packages.yml
 
+- name: Firewall | Import Kubernetes endpoint protection
+  ansible.builtin.import_tasks: 03-firewall.yml
+
 - name: Swap | Import configuration
   ansible.builtin.import_tasks: 10-swap.yml
 

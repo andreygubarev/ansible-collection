@@ -8,6 +8,9 @@
 - name: Hostname | Import configuration
   ansible.builtin.import_tasks: 02-hostname.yml
 
+- name: Firewall | Import non-destructive service lifecycle
+  ansible.builtin.import_tasks: 03-firewall-lifecycle.yml
+
 - name: Kernel | Import modules
   ansible.builtin.import_tasks: 10-kernel-modules.yml
 

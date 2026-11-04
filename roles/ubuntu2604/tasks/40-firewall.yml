@@ -2,8 +2,8 @@
 # -----------------------------------------------------------------------------
 # Firewall
 # -----------------------------------------------------------------------------
-# Use nftables as the sole host firewall manager; ruleset ownership belongs to
-# hardening or site policy.
+# Use nftables without clearing tables owned by Kubernetes, CNI, or Tailscale.
+# Filtering rules remain the responsibility of each service or site policy.
 # -----------------------------------------------------------------------------
 
 - name: Firewall | Install netfilter tools
@@ -34,6 +34,14 @@
       path: /usr/sbin/ebtables-nft
   loop_control:
     label: "{{ item.name }}"
+
+- name: Firewall | Preserve independently managed tables on reload
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/nftables.conf
+    regexp: '^\s*flush\s+ruleset\s*;?\s*(#.*)?$'
+    state: absent
+  tags: firewall
 
 - name: Firewall | Enable nftables service
   become: true

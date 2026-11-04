@@ -1,0 +1,50 @@
+---
+# -----------------------------------------------------------------------------
+# Shared nftables lifecycle
+# -----------------------------------------------------------------------------
+# Package upgrades can restart an already enabled nftables service. Remove its
+# global flushes before APT runs, so existing container and management rules stay
+# loaded. Fresh installations get the same protection when the tools are added.
+# -----------------------------------------------------------------------------
+
+- name: Firewall | Prepare non-destructive nftables lifecycle
+  become: true
+  tags: [firewall, apt, upgrade, packages]
+  block:
+    - name: Firewall | Check for existing nftables configuration
+      ansible.builtin.stat:
+        path: /etc/nftables.conf
+      register: ubuntu2604__nftables_config
+
+    - name: Firewall | Preserve existing tables during package upgrades
+      ansible.builtin.lineinfile:
+        path: /etc/nftables.conf
+        regexp: '^\s*flush\s+ruleset\s*;?\s*(#.*)?$'
+        state: absent
+      when: ubuntu2604__nftables_config.stat.exists
+
+    - name: Firewall | Ensure nftables service drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/nftables.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Firewall | Preserve independently managed tables on stop
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/nftables.service.d/10-preserve-tables.conf
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          [Service]
+          # Each owner manages its own tables. Stopping this loader must not
+          # remove Kubernetes, CNI, Tailscale, or site policy.
+          ExecStop=
+        owner: root
+        group: root
+        mode: "0644"
+      register: ubuntu2604__nftables_unit
+
+    - name: Firewall | Reload service definitions before package upgrades
+      ansible.builtin.systemd_service:
+        daemon_reload: "{{ ubuntu2604__nftables_unit is changed }}"

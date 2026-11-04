@@ -20,8 +20,8 @@ Allow outbound access to Ubuntu APT repositories and HTTPS access to:
 | `registry.k8s.io` | Kubernetes images |
 | `ghcr.io` | Flannel images |
 
-Restrict access to API TCP/6443 externally; the role does not configure firewall rules.
+The role protects its host-side Kubernetes endpoints with nftables. Remote API connections are blocked by default; use SSH and local `kubectl`. SSH, Tailscale, forwarded applications, and a host-wide default-deny firewall remain outside this policy. See [architecture](../concepts/architecture.md).
 
-Installed packages: `apt-transport-https`, `ca-certificates`, `curl`, `gnupg`, `containerd`, `containernetworking-plugins`, `kubeadm`, `kubectl`, and `kubelet`.
+Installed packages: `apt-transport-https`, `ca-certificates`, `curl`, `gnupg`, `containerd`, `containernetworking-plugins`, `nftables`, `kubeadm`, `kubectl`, and `kubelet`.
 
 [Quickstart](../getting-started/quickstart.md) · [Configuration](configuration.md)

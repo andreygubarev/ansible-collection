@@ -9,7 +9,7 @@ kubernetes_pod_subnet: 10.244.0.0/16
 kubernetes_service_subnet: 10.96.0.0/16
 ```
 
-The API address initially defaults to the host's IPv4 address, then is remembered. It controls the advertise address, endpoint, bind address, and certificate SAN; restrict access to TCP/6443. Changing an initialized cluster's address may require a separate certificate/network migration; the role does not renew certificates automatically.
+The API address initially defaults to the host's IPv4 address, then is remembered. It controls the advertise address, endpoint, bind address, and certificate SAN. The role's endpoint firewall blocks new remote API connections while preserving access from the node and its pod network. Changing an initialized cluster's address may require a separate certificate/network migration; the role does not renew certificates automatically.
 
 The default pod CIDR matches Flannel v0.28.10. For another CIDR, set `kubernetes_flannel_manifest_url` to a manifest with a matching `net-conf.json` `Network`. The role does not rewrite the manifest or upgrade an existing Flannel installation.
 

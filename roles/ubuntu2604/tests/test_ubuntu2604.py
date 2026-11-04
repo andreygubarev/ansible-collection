@@ -583,6 +583,13 @@ def test_nftables_service_is_active_and_enabled(host):
     assert service.is_enabled
 
 
+def test_nftables_loader_does_not_flush_other_owners_tables(host):
+    assert not host.file("/etc/nftables.conf").contains(r"^[[:space:]]*flush[[:space:]][[:space:]]*ruleset")
+    assert host.check_output("systemctl show nftables --property=ExecStop --value").strip() == ""
+    dropin = host.file("/etc/systemd/system/nftables.service.d/10-preserve-tables.conf")
+    assert dropin.user == "root" and dropin.mode == 0o644
+
+
 def test_ufw_service_is_masked(host):
     link = host.file("/etc/systemd/system/ufw.service")
 

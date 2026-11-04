@@ -1,0 +1,127 @@
+---
+# -----------------------------------------------------------------------------
+# Kubernetes host endpoints
+# -----------------------------------------------------------------------------
+# Protect only the host services installed by this role. Application publishing,
+# SSH, and transit routing belong to their respective owners, not this policy.
+# Load before kubelet and replace only our table, including on existing clusters.
+# -----------------------------------------------------------------------------
+
+- name: Firewall | Configure Kubernetes endpoint protection
+  become: true
+  tags: firewall
+  block:
+    - name: Firewall | Install nftables
+      ansible.builtin.apt:
+        name: nftables
+        state: present
+        install_recommends: false
+        lock_timeout: 600
+
+    # Keep this service safety configuration identical to the Ubuntu baseline.
+    # The Kubernetes role must also work without first applying that baseline.
+    - name: Firewall | Preserve independently managed tables on reload
+      ansible.builtin.lineinfile:
+        path: /etc/nftables.conf
+        regexp: '^\s*flush\s+ruleset\s*;?\s*(#.*)?$'
+        state: absent
+
+    - name: Firewall | Ensure nftables service drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/nftables.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Firewall | Preserve independently managed tables on stop
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/nftables.service.d/10-preserve-tables.conf
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          [Service]
+          # Each owner manages its own tables. Stopping this loader must not
+          # remove Kubernetes, CNI, Tailscale, or site policy.
+          ExecStop=
+        owner: root
+        group: root
+        mode: "0644"
+      register: kubernetes__nftables_unit
+
+    - name: Firewall | Ensure rules directory exists
+      ansible.builtin.file:
+        path: /etc/nftables.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Firewall | Configure endpoint protection
+      ansible.builtin.template:
+        src: firewall.nft.j2
+        dest: /etc/nftables.d/kubernetes.nft
+        owner: root
+        group: root
+        mode: "0644"
+        validate: /usr/sbin/nft --check --file %s
+
+    - name: Firewall | Configure boot-time protection
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/kubernetes-firewall.service
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          [Unit]
+          Description=Protect Kubernetes host endpoints
+          DefaultDependencies=no
+          Wants=network-pre.target nftables.service
+          After=nftables.service
+          Before=network-pre.target kubelet.service shutdown.target
+          Conflicts=shutdown.target
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/usr/sbin/nft --file /etc/nftables.d/kubernetes.nft
+          ExecReload=/usr/sbin/nft --file /etc/nftables.d/kubernetes.nft
+
+          [Install]
+          WantedBy=sysinit.target
+        owner: root
+        group: root
+        mode: "0644"
+      register: kubernetes__firewall_unit
+
+    - name: Firewall | Enable boot-time protection
+      ansible.builtin.systemd_service:
+        name: kubernetes-firewall
+        enabled: true
+        state: started
+        daemon_reload: "{{ kubernetes__nftables_unit is changed or kubernetes__firewall_unit is changed }}"
+
+    - name: Firewall | Reconcile loaded endpoint protection
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_facts['python']['executable'] }}"
+          - -c
+          - |
+            import pathlib
+            import re
+            import subprocess
+
+            def normalize(text):
+                return re.sub(r"\s+", "", re.sub(r"(?m)#.*$", "", text))
+
+            path = "/etc/nftables.d/kubernetes.nft"
+            desired = pathlib.Path(path).read_text()
+            desired = desired[desired.index("table inet andreygubarev_kubernetes {"):]
+            loaded = subprocess.run(
+                ["nft", "--numeric-priority", "list", "table",
+                 "inet", "andreygubarev_kubernetes"],
+                capture_output=True, text=True, check=False,
+            )
+            if loaded.returncode or normalize(loaded.stdout) != normalize(desired):
+                subprocess.run(["nft", "--check", "--file", path], check=True)
+                subprocess.run(["nft", "--file", path], check=True)
+                print("updated")
+      register: kubernetes__firewall_apply
+      changed_when: "'updated' in kubernetes__firewall_apply.stdout"

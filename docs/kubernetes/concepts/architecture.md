@@ -21,7 +21,9 @@ The node name defaults to the OS hostname at initialization. Set it beforehand; 
 
 ## Security and networking
 
-- The API binds to `kubernetes_advertise_address`. Restrict TCP/6443 with external or host firewall policy.
+- The API keeps its `kubernetes_advertise_address` binding and certificates. The role loads its own `inet andreygubarev_kubernetes` nftables table before kubelet. New connections to host API/kubelet endpoints are allowed only through loopback or Flannel's `cni0` with a pod source address. Host etcd and health endpoints are local-only. External VXLAN UDP/8472 is blocked. Established and related traffic is preserved.
+- The endpoint policy covers IPv4 and IPv6 without changing other host ports or `FORWARD`. It does not configure SSH, Tailscale, application ingress, or a host-wide default-deny policy. Published NodePort/hostPort traffic and pod isolation still need separate policy. Use SSH and local `kubectl` for administration.
+- The `firewall` tag reconciles loaded rules, including missing or modified rules, without restarting Kubernetes. Updates replace only the role's table atomically. A dedicated systemd unit restores it on boot. The nftables loader no longer flushes independently managed tables on stop or reload.
 - New clusters set kube-proxy `conntrack.maxPerCore=0`, preserving the host's `nf_conntrack_max` rather than overwriting the Ubuntu baseline. Existing clusters' kube-proxy configuration is not migrated automatically.
 - Flannel provides VXLAN networking, not NetworkPolicy enforcement. It is installed only when absent; existing Flannel is not upgraded automatically.
 - Optional exact-name CoreDNS rewrites provide cluster-wide split DNS without changing public URLs. The role patches only its marked block in kubeadm's existing Corefile, preserving other configuration and relying on CoreDNS reload rather than restarting Pods. Reapply after kubeadm replaces the Corefile.

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import re
+import socket
+import time
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import yaml
@@ -251,6 +254,8 @@ EXPECTED_BREADCRUMBED_FILES = (
     "/etc/containerd/conf.d/99-kubernetes.toml",
     "/etc/apt/sources.list.d/kubernetes.sources",
     "/etc/kubernetes/kubeadm-config.yaml",
+    "/etc/nftables.d/kubernetes.nft",
+    "/etc/systemd/system/kubernetes-firewall.service",
 )
 
 
@@ -260,6 +265,77 @@ def test_role_owned_text_file_has_source_breadcrumb(host, path):
 
     assert config.exists
     assert config.contains(grep_literal(ROLE_SOURCE_URL))
+
+
+# -----------------------------------------------------------------------------
+# Kubernetes endpoint protection
+# -----------------------------------------------------------------------------
+
+
+EXTERNAL_BLOCKED_TCP_PORTS = (2379, 2380, 6443, 10250, 10256)
+
+
+def test_firewall_service_is_active_and_enabled(host, saved_settings):
+    assert host.package("nftables").is_installed
+    service = host.service("kubernetes-firewall")
+    assert service.is_running and service.is_enabled
+    assert host.socket(f"tcp://{saved_settings['advertise_address']}:6443").is_listening
+
+
+@pytest.mark.parametrize("port", EXTERNAL_BLOCKED_TCP_PORTS)
+def test_node_internal_ports_are_unreachable_from_test_runner(host, saved_settings, port):
+    # This socket runs on the pytest runner, not through host.run() on the node.
+    with pytest.raises((TimeoutError, ConnectionRefusedError)):
+        socket.create_connection((saved_settings["advertise_address"], port), timeout=1).close()
+
+
+def test_new_external_ssh_connection_is_preserved(host, saved_settings):
+    settings = json.loads(host.file("/etc/ansible/facts.d/ubuntu2604.fact").content_string)
+    with socket.create_connection((saved_settings["advertise_address"], settings["ssh_port"]), timeout=3) as connection:
+        assert connection.recv(256).startswith(b"SSH-2.0-")
+
+
+def test_pods_retain_api_dns_and_kubelet_access(host, saved_settings):
+    name = "firewall-probe-" + uuid4().hex[:12]
+    kubectl = "kubectl --kubeconfig /etc/kubernetes/admin.conf"
+    script = (
+        'token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); '
+        'test "$(curl --max-time 15 --silent --show-error '
+        '--cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt '
+        '-H "Authorization: Bearer $token" -o /dev/null -w "%{http_code}" '
+        'https://kubernetes.default.svc/version)" = 200; '
+        'test "$(curl --max-time 15 --silent --show-error --insecure '
+        '-o /dev/null -w "%{http_code}" '
+        f'https://{saved_settings["advertise_address"]}:10250/healthz)" = 401'
+    )
+    try:
+        host.check_output(
+            kubectl + " run %s --image=curlimages/curl:8.12.1 --restart=Never --command -- sh -ec %s",
+            name, script,
+        )
+        result = host.run(kubectl + " wait --for=jsonpath='{.status.phase}'=Succeeded pod/%s --timeout=180s", name)
+        assert result.rc == 0, host.run(kubectl + " logs %s", name).stdout + result.stderr
+    finally:
+        host.run(kubectl + " delete pod %s --ignore-not-found --wait=false", name)
+
+
+def test_metrics_collection_reaches_the_kubelet(host):
+    for _ in range(30):
+        result = host.run("kubectl --kubeconfig /etc/kubernetes/admin.conf top nodes --no-headers")
+        if result.rc == 0:
+            assert result.stdout.strip() and "<unknown>" not in result.stdout
+            return
+        time.sleep(2)
+    pytest.fail(result.stderr)
+
+
+def test_firewall_ipv6_udp_spoofing_and_forwarding(host):
+    # Run real listeners and clients in disposable namespaces, using the installed
+    # rules file. No cluster service has to be stopped to test an occupied port.
+    probe = Path(__file__).with_name("probe_firewall.py").read_text()
+    result = host.run("python3 -c %s", probe)
+    assert result.rc == 0, result.stdout + result.stderr
+    assert "firewall boundary checks passed" in result.stdout
 
 
 # -----------------------------------------------------------------------------
