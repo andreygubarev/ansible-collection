@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- **Debian 13 support**: Add an independent `debian13` container-host baseline and local playbook. Kubernetes, Terraform tooling, GitOps, and agents support both Debian 13 and Ubuntu 26.04. Debian uses signed vendor repositories for containerd 2.x and Node.js 24 LTS; existing distro runtimes require explicit migration. Ubuntu keeps its existing package sources and public settings.
+- **Cross-platform verification**: Run all five role suites on separate fresh Ubuntu and Debian Incus VMs, including GitOps workspace creation, administrative SSH port changes, idempotence, firewall repair, and reboot persistence. `INCUS_DISTRIBUTIONS` selects either or both targets; no GitOps workloads are applied.
+
 ## [2026.11.0] - 2026-11-05
 
 ### Security

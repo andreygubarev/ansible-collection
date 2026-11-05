@@ -1,0 +1,29 @@
+---
+# -----------------------------------------------------------------------------
+# Time
+# -----------------------------------------------------------------------------
+# Use UTC for cross-region log correlation; install chrony explicitly because
+# minimal images may omit Debian's usual time synchronization stack.
+# -----------------------------------------------------------------------------
+
+- name: Time | Install chrony
+  become: true
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+    install_recommends: false
+  tags: [time, packages]
+
+- name: Time | Set timezone to UTC
+  become: true
+  community.general.timezone:
+    name: "{{ debian13_timezone }}"
+  tags: time
+
+- name: Time | Ensure chrony time synchronization is active
+  become: true
+  ansible.builtin.systemd_service:
+    name: chrony
+    state: started
+    enabled: true
+  tags: time

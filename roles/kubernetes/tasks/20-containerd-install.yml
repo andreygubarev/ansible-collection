@@ -3,16 +3,93 @@
 # Containerd
 # -----------------------------------------------------------------------------
 # kubeadm and kubelet need a CRI runtime with systemd cgroups so pod accounting
-# matches Ubuntu's unified cgroup hierarchy and service manager behavior.
+# matches the host's unified cgroup hierarchy and service manager behavior.
 # -----------------------------------------------------------------------------
+
+# Debian's archive is on containerd 1.7. Only the runtime package is taken from
+# Docker's signed repository; Docker Engine and its networking are not installed.
+- name: Containerd | Configure Debian runtime repository
+  become: true
+  when: ansible_facts['distribution'] == 'Debian'
+  tags: [containerd, packages]
+  block:
+    - name: Containerd | Ensure APT keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Containerd | Install verified Docker archive key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/kubernetes-docker.asc
+        # Docker Release key: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88.
+        checksum: sha256:1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570
+        owner: root
+        group: root
+        mode: "0644"
+      register: kubernetes__docker_key
+
+    - name: Containerd | Configure signed stable packages
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/kubernetes-containerd.sources
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          Types: deb
+          URIs: https://download.docker.com/linux/debian
+          Suites: trixie
+          Components: stable
+          Architectures: {{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else 'arm64' }}
+          Signed-By: /etc/apt/keyrings/kubernetes-docker.asc
+        owner: root
+        group: root
+        mode: "0644"
+      register: kubernetes__docker_source
+
+    - name: Containerd | Keep the runtime on supported major version 2
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/90-kubernetes-containerd
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          Package: containerd.io
+          Pin: version 2.*
+          Pin-Priority: 600
+        owner: root
+        group: root
+        mode: "0644"
+      register: kubernetes__docker_pin
+
+    - name: Containerd | Refresh runtime package metadata
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: >-
+          {{ 0 if (kubernetes__docker_key is changed or kubernetes__docker_source is changed
+                   or kubernetes__docker_pin is changed) else 3600 }}
+      changed_when: false
 
 - name: Containerd | Install runtime packages
   become: true
   ansible.builtin.apt:
     name:
-      - containerd
+      - "{{ 'containerd.io' if ansible_facts['distribution'] == 'Debian' else 'containerd' }}"
       - containernetworking-plugins
     state: present
     install_recommends: true
     lock_timeout: 600
   tags: [containerd, packages]
+
+- name: Containerd | Read installed runtime version
+  ansible.builtin.command: containerd --version
+  register: kubernetes__containerd_version
+  changed_when: false
+  check_mode: false
+  tags: containerd
+
+- name: Containerd | Require the supported configuration format
+  ansible.builtin.assert:
+    that:
+      - kubernetes__containerd_version.stdout is search(' v?2[.]')
+    fail_msg: "This role requires containerd 2.x before writing its version 3 configuration."
+  tags: containerd

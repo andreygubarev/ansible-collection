@@ -1,0 +1,58 @@
+---
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+# Container hosts burst logs; keep reboot history but cap journals/free space so
+# logs cannot crowd out packages or workload state.
+# -----------------------------------------------------------------------------
+
+- name: Logs | Ensure journald drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: logs
+
+- name: Logs | Ensure persistent journal directory exists
+  become: true
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2755"
+  tags: logs
+
+- name: Logs | Configure journald retention and pressure limits
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/60-debian13-log-pressure.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      [Journal]
+      # Keep recovery history without unbounded journal growth on small disks.
+      Storage=persistent
+      Compress=yes
+      SystemMaxUse=1G
+      SystemMaxFileSize=128M
+      MaxRetentionSec=30day
+      MaxFileSec=1week
+
+      # Reserve /var/log and /run space so log storms age out instead of filling the VM.
+      SystemKeepFree=2G
+      RuntimeMaxUse=256M
+      RuntimeKeepFree=512M
+    mode: "0644"
+  tags: logs
+  notify: Restart systemd-journald
+
+- name: Logs | Apply journal retention to existing files
+  become: true
+  ansible.builtin.command: journalctl --vacuum-size=1G --vacuum-time=30d
+  changed_when: false
+  tags: logs

@@ -1,0 +1,41 @@
+---
+# -----------------------------------------------------------------------------
+# Package maintenance
+# -----------------------------------------------------------------------------
+# Debian does not reliably create Ubuntu's reboot-required marker. Use its
+# native kernel check instead. Keep needrestart in list-only mode; reboots remain
+# manual rather than being triggered by package maintenance.
+# -----------------------------------------------------------------------------
+
+- name: APT | Install kernel restart reporting
+  become: true
+  ansible.builtin.apt:
+    name: needrestart
+    state: present
+    lock_timeout: 600
+  environment:
+    NEEDRESTART_MODE: l
+  tags: [apt, upgrade, packages]
+
+- name: APT | Upgrade packages and clean unused package data
+  become: true
+  ansible.builtin.apt:
+    lock_timeout: 600
+    upgrade: safe
+    autoclean: true
+  environment:
+    NEEDRESTART_MODE: l
+  tags: [apt, upgrade, packages]
+
+- name: APT | Check running and installed kernel versions
+  become: true
+  ansible.builtin.command: needrestart -b -k
+  register: debian13__kernel_status
+  changed_when: false
+  tags: [apt, upgrade, packages]
+
+- name: APT | Report kernel restart status without rebooting
+  ansible.builtin.debug:
+    msg: "{{ debian13__kernel_status.stdout_lines }}"
+  when: not ansible_check_mode
+  tags: [apt, upgrade, packages]

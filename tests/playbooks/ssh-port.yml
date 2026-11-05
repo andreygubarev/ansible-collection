@@ -1,0 +1,11 @@
+---
+- name: Verify administrative SSH port changes on the disposable VM
+  hosts: incus_test
+  become: true
+  tasks:
+    # Keep this playbook baseline-only: after the final SSH restart, the caller
+    # updates its inventory before making a new connection on the selected port.
+    - name: Test | Apply the selected SSH policy
+      ansible.builtin.include_role:
+        name: "andreygubarev.com.{{ incus_test_baseline }}"
+      tags: always

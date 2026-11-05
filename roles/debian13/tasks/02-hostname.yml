@@ -1,0 +1,42 @@
+---
+# -----------------------------------------------------------------------------
+# Hostname
+# -----------------------------------------------------------------------------
+# Apply the validated name without letting cloud metadata reset it on reboot.
+# Desired settings are already persisted by the configuration section.
+# -----------------------------------------------------------------------------
+
+- name: Hostname | Preserve hostname through cloud-init
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud.cfg.d/99-debian13-hostname.cfg
+    content: |
+      # Managed by andreygubarev.com.debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+      # Keep cloud metadata from reverting the chosen hostname or hosts mapping.
+      preserve_hostname: true
+      manage_etc_hosts: false
+    owner: root
+    group: root
+    mode: "0644"
+  when: debian13__cloud_init.stat.exists
+  tags: hostname
+
+- name: Hostname | Configure local name resolution
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1[ \t]+'
+    line: >-
+      127.0.1.1 {{ debian13_hostname }}{{ ' ' + debian13_hostname.split('.')[0] if '.' in debian13_hostname else '' }}
+    owner: root
+    group: root
+    mode: "0644"
+  tags: hostname
+
+- name: Hostname | Apply static and runtime hostname
+  become: true
+  ansible.builtin.hostname:
+    name: "{{ debian13_hostname }}"
+    use: systemd
+  tags: hostname

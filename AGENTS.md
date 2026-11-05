@@ -39,15 +39,22 @@ Every changed line should trace directly to the user request or to keeping that 
 - Prefer host defaults that support container networking, dense service processes, and predictable VM recovery.
 - Keep all public Ubuntu settings in `defaults/main.yml`, resolving saved facts before fallback defaults. Validate and persist the complete configuration before application; hostname is required on first use.
 
+## Debian 13 role target
+
+- The independent `debian13` role provides the same container-worker host policy on Debian 13 amd64/arm64. Keep Ubuntu's role, variable names, saved facts, and sources unchanged.
+- Keep Debian public settings in `defaults/main.yml` with saved-fact fallbacks, validate and persist the complete configuration before application, and require hostname on first use.
+- Use Debian's official archive/security sources, service-based SSH, `/etc/locale.conf`, and native kernel restart reporting. Reboots remain manual. Do not perform Ubuntu-to-Debian migration.
+- Shared roles use signed vendor APT repositories only where Debian's packages do not meet the runtime contract: containerd.io 2.x without Docker Engine, and Node.js 24 LTS with bundled npm. Scope checksum-verified keys with Signed-By; never execute setup scripts or import testing/unstable repositories. Existing conflicting runtimes require explicit migration.
+
 ## Kubernetes role target
 
-- The `kubernetes` role provisions a standalone single-node kubeadm cluster on Ubuntu 26.04.
+- The `kubernetes` role provisions a standalone single-node kubeadm cluster on Ubuntu 26.04 or Debian 13.
 - Keep public settings in `defaults/main.yml` with local-fact fallbacks. Validate and save the complete desired configuration; reject changes to stored cluster identity before writing.
 - Collection playbooks target localhost and do not automatically apply other roles.
 
 ## Terraform tooling role target
 
-- The `terraform` role installs system-wide direnv and tenv on Ubuntu 26.04 amd64/arm64, then installs OpenTofu and Terragrunt through tenv for an existing user. It does not install HashiCorp Terraform.
+- The `terraform` role installs system-wide direnv and tenv on Ubuntu 26.04 or Debian 13 amd64/arm64, then installs OpenTofu and Terragrunt through tenv for an existing user. It does not install HashiCorp Terraform.
 - Keep public settings in `defaults/main.yml` with local-fact fallbacks. Initially resolve latest stable tenv, OpenTofu 1.12.x, and Terragrunt 1.1.x to exact versions; validate and save the complete configuration before installation. Reuse saved versions unless explicitly overridden.
 - User tool versions live in `~/.tenv`; system proxies live in `/usr/local/bin`. Configure only the selected user's Bash direnv hook and never authorize `.envrc` files automatically.
 - Install checksummed, versioned SOPS and age binaries system-wide. Create the selected user's age identity at `~/.config/sops/age/keys.txt` only when absent, with private directory/file permissions; never replace it, log its content, or store it in facts.
@@ -92,8 +99,8 @@ Every changed line should trace directly to the user request or to keeping that 
 ## Testinfra verification
 
 - Use testinfra to verify role application in a fresh local Incus VM.
-- Keep verification in `roles/ubuntu2604/tests/test_ubuntu2604.py`, `roles/kubernetes/tests/test_kubernetes.py`, and `roles/terraform/tests/test_terraform.py`.
-- `make test` applies Ubuntu followed by Kubernetes and Terraform tooling to a fresh VM and verifies all three roles. The roles remain independently usable; standalone Kubernetes testing is not required.
+- Keep verification in each role's `tests/` directory, including `roles/debian13/tests/test_debian13.py` for the Debian baseline.
+- `make test` applies the matching baseline, Kubernetes, Terraform tooling, GitOps, and agents on separate fresh Ubuntu 26.04 and Debian 13 VMs. `INCUS_DISTRIBUTIONS` selects either or both targets. All five suites run for each OS; no GitOps workloads are applied. The roles remain independently usable; standalone Kubernetes testing is not required.
 - Keep tests self-contained by hardcoding the expected role contract in the tests.
 - Use native testinfra modules such as `host.sysctl`, `host.file`, `host.service`, and `host.package`.
 - Place expected-value constants close to the tests that use them, grouped by semantic section.

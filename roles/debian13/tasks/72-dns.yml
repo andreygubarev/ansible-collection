@@ -1,0 +1,55 @@
+---
+# -----------------------------------------------------------------------------
+# DNS
+# -----------------------------------------------------------------------------
+# Keep DHCP DNS primary for internal zones; FallbackDNS only covers links with
+# no known servers.
+# -----------------------------------------------------------------------------
+
+- name: DNS | Install systemd-resolved
+  become: true
+  ansible.builtin.apt:
+    name: systemd-resolved
+    state: present
+    install_recommends: false
+  tags: [dns, packages]
+
+- name: DNS | Ensure systemd-resolved is enabled and running
+  become: true
+  ansible.builtin.systemd_service:
+    name: systemd-resolved
+    state: started
+    enabled: true
+  tags: dns
+
+- name: DNS | Ensure /etc/resolv.conf points to the systemd stub
+  become: true
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+  tags: dns
+  notify: Restart systemd-resolved
+
+- name: DNS | Ensure resolved.conf.d directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: "0755"
+  tags: dns
+
+- name: DNS | Configure fallback DNS servers
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/60-debian13-fallback-dns.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      [Resolve]
+      FallbackDNS=1.1.1.1 1.0.0.1
+    mode: "0644"
+  tags: dns
+  notify: Restart systemd-resolved

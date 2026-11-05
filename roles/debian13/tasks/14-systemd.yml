@@ -1,0 +1,48 @@
+---
+# -----------------------------------------------------------------------------
+# Systemd
+# -----------------------------------------------------------------------------
+# PAM misses system-manager services; manager defaults give runtimes density
+# headroom while cgroup accounting stays useful for noisy-container diagnosis.
+# -----------------------------------------------------------------------------
+
+- name: Systemd | Ensure system manager drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: systemd
+
+- name: Systemd | Configure container density defaults
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system.conf.d/60-debian13-density.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      [Manager]
+      # Keep service-launched workloads aligned with the kernel and PAM file
+      # descriptor ceilings instead of inheriting low package defaults.
+      DefaultLimitNOFILE=65536
+      # Give service process trees the same headroom as login sessions so dense
+      # workers hit explicit cgroup policy before systemd's manager default.
+      DefaultLimitNPROC=65536
+      DefaultTasksMax=65536
+
+      # CPU usage is always accounted on Debian 13's unified cgroup stack;
+      # keep memory and task accounting explicit so runtime-agnostic host tools
+      # can attribute pressure to service units.
+      DefaultMemoryAccounting=yes
+      DefaultTasksAccounting=yes
+    mode: "0644"
+  tags: systemd
+  notify: Reexec systemd manager
+
+# Re-exec before runtimes start so same-play services inherit new defaults.
+- name: Systemd | Apply manager default changes
+  ansible.builtin.meta: flush_handlers
+  tags: systemd

@@ -1,0 +1,20 @@
+---
+# -----------------------------------------------------------------------------
+# Package cleanup
+# -----------------------------------------------------------------------------
+# Remove only physical/desktop device managers. Keep cloud integration, storage,
+# networking, administrative tools, and automatically installed base packages.
+# -----------------------------------------------------------------------------
+
+- name: APT | Remove container-worker irrelevant packages
+  become: true
+  ansible.builtin.apt:
+    name:
+      - modemmanager
+      - fwupd
+      - udisks2
+      - bolt
+    state: absent
+    purge: true
+    lock_timeout: 600
+  tags: [apt, packages]

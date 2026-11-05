@@ -6,15 +6,15 @@
 # These checks also apply to selective execution.
 # -----------------------------------------------------------------------------
 
-- name: Prerequisite | Assert OS is Ubuntu 26.04
+- name: Prerequisite | Assert OS is supported
   ansible.builtin.assert:
     that:
-      - ansible_facts['distribution'] == "Ubuntu"
-      - ansible_facts['distribution_version'] == "26.04"
+      - >-
+        (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '26.04')
+        or (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] == '13')
     fail_msg: >-
-      This role requires Ubuntu 26.04
-      (detected {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }})
-    success_msg: "OS check passed: Ubuntu 26.04"
+      This role requires Ubuntu 26.04 or Debian 13
+      (detected {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}).
   tags: always
 
 - name: Prerequisite | Assert architecture is supported
@@ -58,3 +58,21 @@
     - kubernetes__cloud_init.stat.exists
     - kubernetes__cloud_init_timeout.rc == 1
   tags: always
+
+- name: Prerequisite | Check Debian runtime package ownership
+  when: ansible_facts['distribution'] == 'Debian'
+  tags: always
+  block:
+    - name: Prerequisite | Read installed Debian packages
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Prerequisite | Require explicit migration of conflicting runtimes
+      ansible.builtin.assert:
+        that:
+          - "'containerd' not in ansible_facts['packages']"
+          - "'runc' not in ansible_facts['packages']"
+        fail_msg: >-
+          Debian 13 uses Docker's containerd.io 2.x package. Existing distro
+          containerd/runc packages require an explicit runtime migration;
+          this role never removes them automatically.

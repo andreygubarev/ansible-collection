@@ -3,15 +3,16 @@
 # Prerequisite
 # -----------------------------------------------------------------------------
 # Fail before mutation on unsupported hosts and let cloud-init finish its APT
-# work before installing packages. This role does not depend on the Ubuntu role.
+# work before installing packages. This role does not apply a host baseline.
 # -----------------------------------------------------------------------------
 
-- name: Prerequisite | Assert OS is Ubuntu 26.04
+- name: Prerequisite | Assert OS is supported
   ansible.builtin.assert:
     that:
-      - ansible_facts['distribution'] == "Ubuntu"
-      - ansible_facts['distribution_version'] == "26.04"
-    fail_msg: "This role requires Ubuntu 26.04."
+      - >-
+        (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '26.04')
+        or (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] == '13')
+    fail_msg: "This role requires Ubuntu 26.04 or Debian 13."
   tags: always
 
 - name: Prerequisite | Assert architecture is supported

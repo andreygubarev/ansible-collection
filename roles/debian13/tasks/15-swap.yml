@@ -1,0 +1,21 @@
+---
+# -----------------------------------------------------------------------------
+# Swap
+# -----------------------------------------------------------------------------
+# Disable swap because host paging undermines container latency and OOM policy.
+# -----------------------------------------------------------------------------
+
+- name: Swap | Disable active swap
+  become: true
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+  tags: swap
+
+- name: Swap | Remove swap entries from fstab
+  become: true
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^(?!#)(.*\sswap\s.*)$'
+    replace: '# Disabled by ansible-role-debian13 (https://github.com/andreygubarev/ansible-collection): \1'
+    backup: true
+  tags: swap

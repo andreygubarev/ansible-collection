@@ -1,6 +1,6 @@
 # Kubernetes
 
-Single-node kubeadm cluster on Ubuntu 26.04 with containerd, Flannel, and metrics-server. Independent of the Ubuntu baseline role.
+Single-node kubeadm cluster on Ubuntu 26.04 or Debian 13 with containerd, Flannel, and metrics-server. Independent of both host baseline roles.
 
 - [Quickstart](getting-started/quickstart.md)
 - [Configuration](reference/configuration.md)

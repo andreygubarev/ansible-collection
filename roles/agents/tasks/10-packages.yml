@@ -2,28 +2,91 @@
 # -----------------------------------------------------------------------------
 # Packages
 # -----------------------------------------------------------------------------
-# Ubuntu 26.04 provides Node.js >= 22.19, as required by Pi. Keep the runtime
-# managed by APT and available to non-interactive callers without shell hooks.
+# Keep Node.js managed by APT without shell hooks: Ubuntu supplies a compatible
+# runtime; Debian uses NodeSource's Node.js 24 LTS package, which bundles npm.
 # BB's native add-ons may need compilation; its user service needs a D-Bus session.
 # POSIX ACL tools let Ansible share temporary modules with bb when switching
 # from another unprivileged user, including local runs without pipelining.
 # -----------------------------------------------------------------------------
 
+# Scope the vendor key to this repository and verify its content before APT
+# trusts it. The NodeSource 24 package bundles npm; no setup script is executed.
+- name: Packages | Configure Debian Node.js repository
+  become: true
+  when: ansible_facts['distribution'] == 'Debian'
+  tags: packages
+  block:
+    - name: Packages | Install repository TLS certificates
+      ansible.builtin.apt:
+        name: ca-certificates
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+        lock_timeout: 600
+
+    - name: Packages | Ensure APT keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Packages | Install verified NodeSource archive key
+      ansible.builtin.get_url:
+        url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+        dest: /etc/apt/keyrings/agents-nodesource.asc
+        # NodeSource repository key: 6F71F525282841EEDAF851B42F59B5F99B1BE0B4.
+        checksum: sha256:b42e0321dabdc24e892115da705cf061167eac12a317f23d329862d0aa0a271d
+        owner: root
+        group: root
+        mode: "0644"
+      register: agents__node_key
+
+    - name: Packages | Configure signed Node.js 24 LTS packages
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/agents-nodejs.sources
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          Types: deb
+          URIs: https://deb.nodesource.com/node_24.x
+          Suites: nodistro
+          Components: main
+          Architectures: {{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else 'arm64' }}
+          Signed-By: /etc/apt/keyrings/agents-nodesource.asc
+        owner: root
+        group: root
+        mode: "0644"
+      register: agents__node_source
+
+    - name: Packages | Refresh Node.js package metadata
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: "{{ 0 if (agents__node_key is changed or agents__node_source is changed) else 3600 }}"
+      changed_when: false
+
 - name: Packages | Install agent runtimes and BB service prerequisites
   become: true
   ansible.builtin.apt:
-    name:
-      - acl
-      - nodejs
-      - npm
-      - git
-      - build-essential
-      - python3
-      - sudo
-      - dbus-user-session
-      - libpam-systemd
+    name: >-
+      {{ ['acl', 'nodejs', 'git', 'build-essential', 'python3', 'sudo', 'dbus-user-session', 'libpam-systemd']
+         + (['npm'] if ansible_facts['distribution'] == 'Ubuntu' else []) }}
     state: present
     update_cache: true
     cache_valid_time: 3600
     install_recommends: false
+  tags: packages
+
+- name: Packages | Read Node.js version
+  ansible.builtin.command: /usr/bin/node --version
+  register: agents__node_version
+  changed_when: false
+  check_mode: false
+  tags: packages
+
+- name: Packages | Validate the Pi runtime requirement
+  ansible.builtin.assert:
+    that:
+      - agents__node_version.stdout | regex_replace('^v', '') is version('22.19.0', '>=')
+    fail_msg: "Pi requires Node.js >= 22.19.0; check the APT candidate and local pinning."
   tags: packages

@@ -1,12 +1,12 @@
 # andreygubarev.com.kubernetes
 
-Single-node kubeadm cluster on Ubuntu 26.04 with containerd, Flannel, metrics-server, and the k9s terminal UI. Requires ansible-core ≥ 2.20 and root or sudo access.
+Single-node kubeadm cluster on Ubuntu 26.04 or Debian 13 with containerd, Flannel, metrics-server, and the k9s terminal UI. Requires ansible-core ≥ 2.20 and root or sudo access.
 
 ```bash
 ansible-playbook andreygubarev.com.kubernetes -e kubernetes_cluster_name=my-cluster
 ```
 
-Runs locally; add `-K` if sudo requires a password. Cluster name is required once. All public settings remain in `defaults/main.yml`; the complete validated configuration is saved before application and reused on subsequent runs. Initial API address and kubeconfig owner are remembered too. Conflicting identity changes are rejected. The Ubuntu baseline is not applied automatically.
+Runs locally; add `-K` if sudo requires a password. Cluster name is required once. All public settings remain in `defaults/main.yml`; the complete validated configuration is saved before application and reused on subsequent runs. Initial API address and kubeconfig owner are remembered too. Conflicting identity changes are rejected. Neither host baseline is applied automatically. Debian uses containerd 2.x from Docker's signed `containerd.io` repository without Docker Engine; Ubuntu keeps its distro runtime. Existing Debian `containerd`/`runc` packages require an explicit migration before application.
 
 Host-side Kubernetes endpoints are protected by a role-owned nftables table, restored on boot and reconciled with the `firewall` tag. Use SSH and local `kubectl` for administration. The policy does not manage SSH, Tailscale transport or exit-node routing, or application forwarding. Cluster identity is unchanged. It is not a host-wide default-deny firewall.
 

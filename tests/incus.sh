@@ -4,9 +4,16 @@ set -euo pipefail
 command -v incus >/dev/null || { echo 'make test requires Incus.' >&2; exit 1; }
 incus --force-local version
 
+baseline=${1:-ubuntu2604}
+case "$baseline" in
+    ubuntu2604) image=images:ubuntu/26.04/cloud ;;
+    debian13) image=images:debian/13/cloud ;;
+    *) echo "Unsupported test distribution: $baseline" >&2; exit 1 ;;
+esac
+
 mkdir -p .cache
-workdir=$(mktemp -d "$PWD/.cache/incus-test.XXXXXX")
-vm="ansible-test-$(date +%s)-$$"
+workdir=$(mktemp -d "$PWD/.cache/incus-$baseline.XXXXXX")
+vm="ansible-test-$baseline-$(date +%s)-$$"
 created=false
 exec > >(tee "$workdir/run.log") 2>&1
 
@@ -38,13 +45,13 @@ ssh-keygen -q -t ed25519 -N '' -f "$workdir/id_ed25519"
 public_key=$(<"$workdir/id_ed25519.pub")
 
 # Do not inherit site profiles or expose host directories to these destructive roles.
-incus --force-local init images:ubuntu/26.04/cloud "$vm" --vm --no-profiles \
+incus --force-local init "$image" "$vm" --vm --no-profiles \
     --storage "$INCUS_STORAGE_POOL" --network "$INCUS_NETWORK" \
     --device root,size=30GiB --config limits.cpu=4 --config limits.memory=6GiB
 created=true
 # Do not set ssh_pwauth before OpenSSH is installed: cloud-init would create a
 # partial sshd_config instead of letting the package provide its PAM/drop-in defaults.
-# The bootstrap user has a locked password; the Ubuntu role later enforces key-only SSH.
+# The bootstrap user has a locked password; the baseline later enforces key-only SSH.
 incus --force-local config set "$vm" cloud-init.user-data - <<EOF
 #cloud-config
 users:
@@ -82,7 +89,9 @@ incus_test:
     testvm:
       ansible_host: "$address"
       ansible_user: ansible
+      ansible_port: 22
       ansible_python_interpreter: /usr/bin/python3
+      incus_test_baseline: "$baseline"
       ansible_ssh_private_key_file: "$workdir/id_ed25519"
       ansible_ssh_common_args: >-
         -o IdentitiesOnly=yes -o IdentityAgent=none
@@ -97,12 +106,35 @@ verify() {
     "${pytest[@]}" -n "$TESTINFRA_WORKERS" --dist=worksteal \
         --hosts='ansible://testvm?controlpersist=300&timeout=30' \
         --ansible-inventory="$workdir/inventory.yml" --sudo \
-        roles/ubuntu2604/tests roles/kubernetes/tests roles/terraform/tests roles/agents/tests
+        "roles/$baseline/tests" roles/kubernetes/tests roles/terraform/tests roles/gitops/tests roles/agents/tests
 }
 
-echo 'Applying Ubuntu, Kubernetes, Terraform tooling, and the Pi harness to the fresh VM'
-apply -e "ubuntu2604_hostname=$vm" -e "kubernetes_cluster_name=$vm"
+echo "Applying $baseline, Kubernetes, Terraform tooling, GitOps, and agents to the fresh VM"
+apply -e "${baseline}_hostname=$vm" -e "kubernetes_cluster_name=$vm" \
+    -e gitops_git_user_name=Incus -e gitops_git_user_email=incus@example.invalid
 verify
+
+echo 'Checking a non-default administrative SSH port without replacing host identity'
+ssh_keys=$(incus --force-local exec "$vm" -T -- sh -c 'sha256sum /etc/ssh/ssh_host_*_key.pub')
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/ssh-port.yml \
+    --tags ssh -e "${baseline}_ssh_port=22022"
+python3 - "$workdir/inventory.yml" "$address" <<'PY'
+from pathlib import Path
+import socket
+import sys
+inventory = Path(sys.argv[1])
+content = inventory.read_text()
+assert content.count("      ansible_port: 22\n") == 1
+inventory.write_text(content.replace("      ansible_port: 22\n", "      ansible_port: 22022\n"))
+with socket.create_connection((sys.argv[2], 22022), timeout=3) as connection:
+    assert connection.recv(256).startswith(b"SSH-2.0-")
+try:
+    with socket.create_connection((sys.argv[2], 22), timeout=1):
+        raise AssertionError("The old SSH port must no longer accept new connections")
+except (ConnectionRefusedError, TimeoutError):
+    pass
+PY
+[[ "$(incus --force-local exec "$vm" -T -- sh -c 'sha256sum /etc/ssh/ssh_host_*_key.pub')" == "$ssh_keys" ]]
 
 echo 'Checking firewall repair and preservation of independently managed rules'
 incus --force-local exec "$vm" -T -- nft -f - <<'EOF'

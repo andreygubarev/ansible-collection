@@ -12,6 +12,7 @@ tags:
   - infrastructure
   - linux
   - ubuntu
+  - debian
   - kubernetes
   - containerd
   - opentofu

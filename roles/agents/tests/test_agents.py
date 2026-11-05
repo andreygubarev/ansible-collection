@@ -6,9 +6,22 @@ import re
 import pytest
 
 
-@pytest.mark.parametrize("package", ("acl", "nodejs", "npm"))
+@pytest.mark.parametrize("package", ("acl", "nodejs"))
 def test_runtime_package_is_installed(host, package):
     assert host.package(package).is_installed
+
+
+def test_npm_is_available_system_wide(host):
+    assert host.file("/usr/bin/npm").exists
+    assert re.fullmatch(r"[0-9]+[.][0-9]+[.][0-9]+", host.check_output("/usr/bin/npm --version"))
+    if host.system_info.distribution == "ubuntu":
+        assert host.package("npm").is_installed
+        assert not host.file("/etc/apt/sources.list.d/agents-nodejs.sources").exists
+    else:
+        assert host.check_output("/usr/bin/node --version").startswith("v24.")
+        assert host.file("/etc/apt/sources.list.d/agents-nodejs.sources").contains(
+            r"^Signed-By: /etc/apt/keyrings/agents-nodesource[.]asc$"
+        )
 
 
 def test_node_version_supports_pi(host):

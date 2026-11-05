@@ -1,0 +1,37 @@
+---
+# -----------------------------------------------------------------------------
+# Kernel
+# -----------------------------------------------------------------------------
+# Container-worker VMs need routing, density, observability, and auto-recovery
+# defaults instead of general-purpose Debian conservatism.
+# -----------------------------------------------------------------------------
+
+- name: Kernel | Persist container kernel modules
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/99-debian13-container.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      # Load bridge netfilter early so bridge sysctls exist on minimal images.
+      br_netfilter
+      # Load conntrack before runtimes so NAT sizing takes effect.
+      nf_conntrack
+      # Require OverlayFS explicitly for overlay snapshotters.
+      overlay
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [kernel, network]
+
+- name: Kernel | Load container kernel modules
+  become: true
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  tags: [kernel, network]
+  loop:
+    - br_netfilter
+    - nf_conntrack
+    - overlay

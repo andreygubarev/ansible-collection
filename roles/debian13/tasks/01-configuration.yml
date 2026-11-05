@@ -1,0 +1,93 @@
+---
+# -----------------------------------------------------------------------------
+# Configuration
+# -----------------------------------------------------------------------------
+# Public defaults resolve saved settings through normal Ansible precedence.
+# Validate everything before saving the desired state, so failed application can
+# be retried without repeating inputs and new role defaults cannot reset a host.
+# -----------------------------------------------------------------------------
+
+- name: Configuration | Validate and save desired settings
+  tags: always
+  block:
+    - name: Configuration | Validate required hostname
+      ansible.builtin.assert:
+        that:
+          - debian13_hostname is string
+          - debian13_hostname | length <= 64
+          - >-
+            debian13_hostname.split('.')
+            | reject('match', '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')
+            | list | length == 0
+        fail_msg: >-
+          Set debian13_hostname on the first run. It must be a lowercase DNS
+          hostname or FQDN, at most 64 characters. Later runs reuse the saved name.
+
+    - name: Configuration | Validate string settings
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', item) is string
+          - lookup('ansible.builtin.vars', item) | trim | length > 0
+        fail_msg: "{{ item }} must be a non-empty string."
+      loop:
+        - debian13_locale
+        - debian13_timezone
+
+    - name: Configuration | Validate boolean settings
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', item) | string | lower in ['true', 'false', 'yes', 'no', 'on', 'off', '1', '0']
+        fail_msg: "{{ item }} must be a boolean or a recognized boolean value."
+      loop:
+        - debian13_disable_ipv6
+        - debian13_ssh_allow_root_login
+        - debian13_ssh_allow_tcp_forwarding
+
+    - name: Configuration | Validate SSH port
+      ansible.builtin.assert:
+        that:
+          - >-
+            debian13_ssh_port is integer
+            or (debian13_ssh_port is string and debian13_ssh_port is match('^[0-9]+$'))
+          - debian13_ssh_port | int >= 1
+          - debian13_ssh_port | int <= 65535
+        fail_msg: "debian13_ssh_port must be an integer from 1 to 65535."
+
+    - name: Configuration | Prepare complete settings snapshot
+      ansible.builtin.set_fact:
+        debian13__vars: >-
+          {{ debian13__facts | combine({
+            'hostname': debian13_hostname,
+            'disable_ipv6': debian13_disable_ipv6 | bool,
+            'locale': debian13_locale,
+            'timezone': debian13_timezone,
+            'ssh_allow_root_login': debian13_ssh_allow_root_login | bool,
+            'ssh_allow_tcp_forwarding': debian13_ssh_allow_tcp_forwarding | bool,
+            'ssh_port': debian13_ssh_port | int
+          }) }}
+
+    - name: Configuration | Ensure local facts directory exists
+      become: true
+      ansible.builtin.file:
+        path: /etc/ansible/facts.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configuration | Save complete desired settings
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/ansible/facts.d/debian13.fact
+        content: "{{ debian13__vars | to_nice_json }}\n"
+        owner: root
+        group: root
+        mode: "0644"
+      register: debian13__facts_file
+
+    - name: Configuration | Refresh local facts
+      ansible.builtin.setup:
+        filter: ansible_local
+      when:
+        - debian13__facts_file is changed
+        - not ansible_check_mode

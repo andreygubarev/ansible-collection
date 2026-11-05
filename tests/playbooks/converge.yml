@@ -1,11 +1,14 @@
 ---
-- name: Apply Ubuntu to the test VM
+- name: Apply the selected host baseline to the test VM
   hosts: incus_test
   become: true
-  roles:
-    - andreygubarev.com.ubuntu2604
+  tasks:
+    - name: Test | Apply the image's baseline
+      ansible.builtin.include_role:
+        name: "andreygubarev.com.{{ incus_test_baseline }}"
+      tags: always
 
-- name: Apply Kubernetes after Ubuntu
+- name: Apply Kubernetes after the host baseline
   hosts: incus_test
   become: true
   roles:
@@ -15,6 +18,11 @@
   hosts: incus_test
   roles:
     - andreygubarev.com.terraform
+
+- name: Prepare the GitOps workspace without applying workloads
+  hosts: incus_test
+  roles:
+    - andreygubarev.com.gitops
 
 - name: Install the Pi harness
   hosts: incus_test

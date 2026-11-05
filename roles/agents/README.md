@@ -1,6 +1,8 @@
 # Agents
 
-Installs the [Pi coding-agent harness](https://pi.dev/docs/latest/quickstart), [Claude Code](https://code.claude.com/docs/en/setup#install-with-npm), and the [BB server](https://github.com/get-bb/bb/blob/main/packages/bb-app/README.md), in that order, on Ubuntu 26.04 with systemd. Node.js and npm come from Ubuntu APT; all three applications are installed system-wide under `/usr/local` and are available without shell initialization.
+Installs the [Pi coding-agent harness](https://pi.dev/docs/latest/quickstart), [Claude Code](https://code.claude.com/docs/en/setup#install-with-npm), and the [BB server](https://github.com/get-bb/bb/blob/main/packages/bb-app/README.md), in that order, on Ubuntu 26.04 or Debian 13 with systemd. All three applications are installed system-wide under `/usr/local` and are available without shell initialization.
+
+Ubuntu uses distro Node.js and npm. Debian uses NodeSource's signed Node.js 24 LTS package with bundled npm. Archive keys are checksum-verified and scoped with `Signed-By`; no vendor setup scripts run. The repository does not extend unattended-upgrades' allowed origins. Use normal APT maintenance for vendor runtime updates.
 
 ```bash
 ansible-playbook andreygubarev.com.agents
@@ -42,4 +44,4 @@ BB listens only on `127.0.0.1:38886`. Its local API is unauthenticated: do not e
 
 In-app BB updates are disabled so Ansible controls the installed version. Reapplying the role upgrades BB when needed and restarts the user service on package or unit changes.
 
-The local playbook does not apply other roles or launch agent jobs. For baseline-first provisioning, apply `andreygubarev.com.ubuntu2604` separately before `andreygubarev.com.agents`.
+The local playbook does not apply other roles or launch agent jobs. For baseline-first provisioning, apply `andreygubarev.com.ubuntu2604` or `andreygubarev.com.debian13` separately before `andreygubarev.com.agents`.

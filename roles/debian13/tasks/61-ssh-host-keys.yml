@@ -1,0 +1,130 @@
+---
+# -----------------------------------------------------------------------------
+# SSH host keys
+# -----------------------------------------------------------------------------
+# Preserve configured host identities and enforce SSH file permissions.
+# -----------------------------------------------------------------------------
+
+# The role-owned drop-in is the first-run marker: only replace image-provided
+# host identities before this role has configured SSH for the first time.
+- name: SSH | Hardening | Check for existing role configuration
+  become: true
+  ansible.builtin.stat:
+    path: /etc/ssh/sshd_config.d/00-debian13-hardening.conf
+  register: debian13__ssh_hardening_config
+  tags: ssh
+
+- name: SSH | Hardening | Regenerate host keys before first configuration
+  become: true
+  when: not debian13__ssh_hardening_config.stat.exists
+  tags: ssh
+  block:
+    - name: SSH | Hardening | Find initial host key files
+      ansible.builtin.find:
+        paths: /etc/ssh
+        patterns: "ssh_host_*"
+        file_type: any
+      register: debian13__ssh_initial_host_keys
+
+    - name: SSH | Hardening | Remove initial host key files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ debian13__ssh_initial_host_keys.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: SSH | Hardening | Generate Ed25519 host key
+      ansible.builtin.command:
+        argv:
+          - ssh-keygen
+          - -t
+          - ed25519
+          - -f
+          - /etc/ssh/ssh_host_ed25519_key
+          - -N
+          - ""
+        creates: /etc/ssh/ssh_host_ed25519_key
+
+    - name: SSH | Hardening | Generate RSA 4096 host key
+      ansible.builtin.command:
+        argv:
+          - ssh-keygen
+          - -t
+          - rsa
+          - -b
+          - "4096"
+          - -f
+          - /etc/ssh/ssh_host_rsa_key
+          - -N
+          - ""
+        creates: /etc/ssh/ssh_host_rsa_key
+
+# Existing role-managed hosts may only have Ed25519/RSA keys. Add ECDSA without
+# replacing their identities so clients pinned to ECDSA algorithms can connect.
+- name: SSH | Hardening | Ensure ECDSA host key exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -t
+      - ecdsa
+      - -b
+      - "256"
+      - -f
+      - /etc/ssh/ssh_host_ecdsa_key
+      - -N
+      - ""
+    creates: /etc/ssh/ssh_host_ecdsa_key
+  tags: ssh
+  notify: Restart OpenSSH
+
+- name: SSH | Hardening | Configure sshd_config permissions
+  become: true
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+  tags: ssh
+
+- name: SSH | Hardening | Find private host key files
+  become: true
+  ansible.builtin.find:
+    paths: /etc/ssh
+    patterns: "ssh_host_*_key"
+    excludes: "*.pub"
+  tags: ssh
+  register: debian13__ssh_private_key_files
+
+- name: SSH | Hardening | Configure private host key permissions
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  tags: ssh
+  loop: "{{ debian13__ssh_private_key_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: SSH | Hardening | Find public host key files
+  become: true
+  ansible.builtin.find:
+    paths: /etc/ssh
+    patterns: "ssh_host_*.pub"
+  tags: ssh
+  register: debian13__ssh_public_key_files
+
+- name: SSH | Hardening | Configure public host key permissions
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  tags: ssh
+  loop: "{{ debian13__ssh_public_key_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"

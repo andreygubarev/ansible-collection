@@ -1,6 +1,6 @@
 # GitOps
 
-Creates `~/gitops` for `gitops_user`, defaulting to the invoking/SSH user. The directory belongs to that user and their primary group, with mode `0700` to protect instance-specific inputs and saved plans.
+Supports Ubuntu 26.04 and Debian 13. Creates `~/gitops` for `gitops_user`, defaulting to the invoking/SSH user. The directory belongs to that user and their primary group, with mode `0700` to protect instance-specific inputs and saved plans.
 
 Run locally with `ansible-playbook andreygubarev.com.gitops`; use `-e gitops_user=operator` to select another existing user. The playbook does not apply other roles or cluster workloads. Set `gitops_git_user_name` and `gitops_git_user_email` on first use; both are mandatory and saved in the repository's `.git/config`. Later runs reuse those values unless explicitly overridden. Global Git identity and auto-detected system identity are not used as fallbacks.
 
