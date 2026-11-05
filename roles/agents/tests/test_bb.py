@@ -46,6 +46,19 @@ def test_bb_package_is_current_stable_and_root_owned(host):
         assert cli.linked_to.startswith(f"{BB_PACKAGE}/")
 
 
+def test_bb_native_addons_work_with_the_current_node_runtime(host):
+    script = f"""
+        const requireBB = require('node:module').createRequire('{BB_PACKAGE}/package.json');
+        const db = new (requireBB('better-sqlite3'))(':memory:');
+        require('node:assert/strict').equal(db.prepare('SELECT 1').pluck().get(), 1);
+        db.close();
+        requireBB('node-pty');
+        requireBB('@parcel/watcher');
+    """
+    result = host.run("sudo -u bb -H /usr/bin/node -e %s", script)
+    assert result.rc == 0, result.stderr
+
+
 @pytest.fixture
 def bb_systemctl(host):
     uid = host.user("bb").uid
@@ -72,6 +85,7 @@ def test_bb_service_has_restart_policy_and_correct_owner(host, bb_systemctl):
     pid = int(host.check_output(f"{bb_systemctl} show bb.service --property=MainPID --value"))
     assert pid > 0
     assert host.check_output("ps -o user= -p %s", str(pid)).strip() == "bb"
+    assert host.check_output("/proc/%s/exe --version", str(pid)) == host.check_output("/usr/bin/node --version")
     assert host.file("/home/bb/.config/systemd/user/bb.service").user == "bb"
     assert not host.file("/etc/systemd/system/bb.service").exists
 

@@ -2,7 +2,7 @@
 
 Installs the [Pi coding-agent harness](https://pi.dev/docs/latest/quickstart), [Claude Code](https://code.claude.com/docs/en/setup#install-with-npm), and the [BB server](https://github.com/get-bb/bb/blob/main/packages/bb-app/README.md), in that order, on Ubuntu 26.04 or Debian 13 with systemd. All three applications are installed system-wide under `/usr/local` and are available without shell initialization.
 
-Ubuntu uses distro Node.js and npm. Debian uses NodeSource's signed Node.js 24 LTS package with bundled npm. Archive keys are checksum-verified and scoped with `Signed-By`; no vendor setup scripts run. The repository does not extend unattended-upgrades' allowed origins. Use normal APT maintenance for vendor runtime updates.
+Both distributions use NodeSource's signed Node.js 24 LTS package with bundled npm. Archive keys are checksum-verified and scoped with `Signed-By`; no vendor setup scripts run. The repository does not extend unattended-upgrades' allowed origins. Use normal APT maintenance for vendor runtime updates.
 
 ```bash
 ansible-playbook andreygubarev.com.agents
@@ -17,7 +17,7 @@ claude --version
 - `agents_bb_version` defaults to `latest`, resolving the npm stable tag on each run. An exact stable version pins BB instead.
 - `agents_pi_web_access_version` defaults to `latest`; an exact stable version pins the Pi Web Access package instead.
 
-Unchanged versions are not reinstalled. npm registry access is required to resolve moving selectors. These npm installations do not lock transitive dependencies. Pi's lifecycle scripts are disabled; Claude Code's are enabled to link its platform binary from an optional dependency, and BB's are enabled because its SQLite, PTY and watcher add-ons require native binaries. Build prerequisites are installed for hosts without matching prebuilt binaries.
+Unchanged versions are not reinstalled. Runtime package changes restart BB so it uses the installed Node.js binary. npm registry access is required to resolve moving selectors. These npm installations do not lock transitive dependencies. Pi's lifecycle scripts are disabled; Claude Code's are enabled to link its platform binary from an optional dependency, and BB's are enabled because its SQLite, PTY and watcher add-ons require native binaries. Build prerequisites are installed for hosts without matching prebuilt binaries.
 
 ## Claude Code
 

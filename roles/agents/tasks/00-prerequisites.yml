@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------------
 # Prerequisite
 # -----------------------------------------------------------------------------
-# Use Ubuntu's Node.js packages and the signed NodeSource LTS repository on Debian.
+# Use the signed NodeSource Node.js 24 LTS repository on both distributions.
 # Validate the target and release selectors before making system-wide changes.
 # -----------------------------------------------------------------------------
 

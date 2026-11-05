@@ -1,0 +1,71 @@
+---
+- name: Prepare the former Ubuntu agent runtime on the disposable test VM
+  hosts: incus_test
+  become: true
+  tasks:
+    - name: Test | Require the Ubuntu baseline
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - incus_test_baseline == 'ubuntu2604'
+
+    - name: Test | Install distro Node.js and npm
+      ansible.builtin.apt:
+        name:
+          - acl
+          - nodejs
+          - npm
+          - git
+          - build-essential
+          - python3
+          - sudo
+          - dbus-user-session
+          - libpam-systemd
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+        install_recommends: false
+        lock_timeout: 600
+
+    - name: Test | Install BB with the distro runtime
+      community.general.npm:
+        name: bb-app
+        global: true
+        ignore_scripts: false
+        executable: /usr/bin/npm
+        state: present
+      environment:
+        npm_config_prefix: /usr/local
+        npm_config_allow_scripts: better-sqlite3,node-pty,@parcel/watcher
+      register: agents__bb_package
+
+    - name: Test | Prepare the existing BB account
+      ansible.builtin.include_role:
+        name: andreygubarev.com.agents
+        tasks_from: 30-bb-user.yml
+
+    - name: Test | Start BB with the distro runtime
+      ansible.builtin.include_role:
+        name: andreygubarev.com.agents
+        tasks_from: 50-bb-service.yml
+
+    - name: Test | Verify native add-ons work before the runtime transition
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/node
+          - -e
+          - |
+            const { createRequire } = require('node:module');
+            const requireBB = createRequire('/usr/local/lib/node_modules/bb-app/package.json');
+            const db = new (requireBB('better-sqlite3'))(':memory:');
+            if (db.prepare('SELECT 1').pluck().get() !== 1) throw new Error('SQLite failed');
+            db.close();
+            requireBB('node-pty');
+            requireBB('@parcel/watcher');
+            console.log(process.version, process.versions.modules);
+      register: test_legacy_node
+      changed_when: false
+
+    - name: Test | Report the original Node.js version and module ABI
+      ansible.builtin.debug:
+        msg: "{{ test_legacy_node.stdout }}"

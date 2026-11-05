@@ -2,8 +2,9 @@
 # -----------------------------------------------------------------------------
 # Packages
 # -----------------------------------------------------------------------------
-# Keep Node.js managed by APT without shell hooks: Ubuntu supplies a compatible
-# runtime; Debian uses NodeSource's Node.js 24 LTS package, which bundles npm.
+# Use the same NodeSource Node.js 24 LTS package on both supported distributions.
+# It bundles npm and keeps the runtime managed by APT without shell hooks.
+# Require the vendor version so existing distro packages are upgraded too.
 # BB's native add-ons may need compilation; its user service needs a D-Bus session.
 # POSIX ACL tools let Ansible share temporary modules with bb when switching
 # from another unprivileged user, including local runs without pipelining.
@@ -11,9 +12,8 @@
 
 # Scope the vendor key to this repository and verify its content before APT
 # trusts it. The NodeSource 24 package bundles npm; no setup script is executed.
-- name: Packages | Configure Debian Node.js repository
+- name: Packages | Configure Node.js repository
   become: true
-  when: ansible_facts['distribution'] == 'Debian'
   tags: packages
   block:
     - name: Packages | Install repository TLS certificates
@@ -68,13 +68,20 @@
 - name: Packages | Install agent runtimes and BB service prerequisites
   become: true
   ansible.builtin.apt:
-    name: >-
-      {{ ['acl', 'nodejs', 'git', 'build-essential', 'python3', 'sudo', 'dbus-user-session', 'libpam-systemd']
-         + (['npm'] if ansible_facts['distribution'] == 'Ubuntu' else []) }}
+    name:
+      - acl
+      - nodejs=24.*nodesource*
+      - git
+      - build-essential
+      - python3
+      - sudo
+      - dbus-user-session
+      - libpam-systemd
     state: present
     update_cache: true
     cache_valid_time: 3600
     install_recommends: false
+  register: agents__runtime_packages
   tags: packages
 
 - name: Packages | Read Node.js version
@@ -84,9 +91,9 @@
   check_mode: false
   tags: packages
 
-- name: Packages | Validate the Pi runtime requirement
+- name: Packages | Validate the Node.js 24 LTS runtime
   ansible.builtin.assert:
     that:
-      - agents__node_version.stdout | regex_replace('^v', '') is version('22.19.0', '>=')
-    fail_msg: "Pi requires Node.js >= 22.19.0; check the APT candidate and local pinning."
+      - agents__node_version.stdout is match('^v24[.]')
+    fail_msg: "This role requires Node.js 24 LTS; check the NodeSource APT candidate and local pinning."
   tags: packages

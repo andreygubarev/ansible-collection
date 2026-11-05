@@ -14,19 +14,15 @@ def test_runtime_package_is_installed(host, package):
 def test_npm_is_available_system_wide(host):
     assert host.file("/usr/bin/npm").exists
     assert re.fullmatch(r"[0-9]+[.][0-9]+[.][0-9]+", host.check_output("/usr/bin/npm --version"))
-    if host.system_info.distribution == "ubuntu":
-        assert host.package("npm").is_installed
-        assert not host.file("/etc/apt/sources.list.d/agents-nodejs.sources").exists
-    else:
-        assert host.check_output("/usr/bin/node --version").startswith("v24.")
-        assert host.file("/etc/apt/sources.list.d/agents-nodejs.sources").contains(
-            r"^Signed-By: /etc/apt/keyrings/agents-nodesource[.]asc$"
-        )
+    assert not host.package("npm").is_installed
 
 
-def test_node_version_supports_pi(host):
-    version = host.check_output("/usr/bin/node --version").lstrip("v")
-    assert tuple(int(part) for part in version.split(".")) >= (22, 19, 0)
+def test_node_24_lts_uses_the_scoped_nodesource_repository(host):
+    assert host.check_output("/usr/bin/node --version").startswith("v24.")
+    assert "nodesource" in host.package("nodejs").version
+    source = host.file("/etc/apt/sources.list.d/agents-nodejs.sources")
+    assert source.contains(r"^URIs: https://deb[.]nodesource[.]com/node_24[.]x$")
+    assert source.contains(r"^Signed-By: /etc/apt/keyrings/agents-nodesource[.]asc$")
 
 
 PI_PACKAGE = "/usr/local/lib/node_modules/@earendil-works/pi-coding-agent"

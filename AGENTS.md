@@ -44,7 +44,9 @@ Every changed line should trace directly to the user request or to keeping that 
 - The independent `debian13` role provides the same container-worker host policy on Debian 13 amd64/arm64. Keep Ubuntu's role, variable names, saved facts, and sources unchanged.
 - Keep Debian public settings in `defaults/main.yml` with saved-fact fallbacks, validate and persist the complete configuration before application, and require hostname on first use.
 - Use Debian's official archive/security sources, service-based SSH, `/etc/locale.conf`, and native kernel restart reporting. Reboots remain manual. Do not perform Ubuntu-to-Debian migration.
-- Shared roles use signed vendor APT repositories only where Debian's packages do not meet the runtime contract: containerd.io 2.x without Docker Engine, and Node.js 24 LTS with bundled npm. Scope checksum-verified keys with Signed-By; never execute setup scripts or import testing/unstable repositories. Existing conflicting runtimes require explicit migration.
+- Debian Kubernetes uses signed vendor APT packages for containerd.io 2.x without Docker Engine; existing distro containerd/runc packages require explicit migration.
+- Agents use the same signed NodeSource Node.js 24 LTS package with bundled npm on both Ubuntu and Debian. Keep the package list literal, without distribution-specific Node.js/npm branches.
+- Scope checksum-verified vendor keys with Signed-By; never execute setup scripts or import testing/unstable repositories.
 
 ## Kubernetes role target
 
