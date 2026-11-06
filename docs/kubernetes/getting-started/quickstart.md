@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Ubuntu 26.04 on amd64 or arm64, ansible-core ≥ 2.20, root or sudo access, and a stable API address. See [network requirements](../reference/requirements.md).
+Ubuntu 26.04 or Debian 13 on amd64 or arm64, ansible-core ≥ 2.20, root or sudo access, and a stable API address. See [network requirements](../reference/requirements.md).
 
 ## Run locally
 
@@ -11,7 +11,7 @@ ansible-galaxy collection install andreygubarev.com --upgrade
 ansible-playbook andreygubarev.com.kubernetes -e kubernetes_cluster_name=my-cluster
 ```
 
-No inventory or SSH transport is required. Add `-K` if sudo requires a password. The Ubuntu baseline role is not applied automatically.
+No inventory or SSH transport is required. Add `-K` if sudo requires a password. Neither host baseline role is applied automatically.
 
 A non-empty cluster name is required on the first run; there is no prompt. The complete validated configuration is saved before application, so later runs need no overrides:
 
@@ -47,7 +47,7 @@ For automated integration tests, run from a repository checkout on a machine wit
 make test
 ```
 
-This tests Ubuntu followed by Kubernetes and Terraform tooling in a fresh VM, including repeat application and persistence after reboot. It does not verify the host running the command. See [development](../../../README.md#integration-tests) for requirements and failure diagnostics.
+This tests all shared roles after the matching baseline in separate fresh Ubuntu and Debian VMs, including repeat application and persistence after reboot. It does not verify the host running the command. See [development](../../../README.md#integration-tests) for requirements and failure diagnostics.
 
 ## Remote provisioning
 

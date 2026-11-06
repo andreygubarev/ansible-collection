@@ -3,11 +3,14 @@ galaxy_info:
   role_name: terraform
   namespace: andreygubarev
   author: Andrey Gubarev
-  description: direnv, tenv, OpenTofu, and Terragrunt provisioning for Ubuntu 26.04
+  description: OpenTofu and Terragrunt tooling for Ubuntu 26.04 and Debian 13
   license: Apache-2.0
   min_ansible_version: "2.20"
   platforms:
     - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
       versions:
         - all
   galaxy_tags:
@@ -16,5 +19,6 @@ galaxy_info:
     - terragrunt
     - direnv
     - ubuntu
+    - debian
 
 dependencies: []

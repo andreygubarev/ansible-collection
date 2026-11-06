@@ -23,7 +23,7 @@
 
     - name: Test | Apply the pre-upgrade guard
       ansible.builtin.include_role:
-        name: andreygubarev.com.ubuntu2604
+        name: "andreygubarev.com.{{ incus_test_baseline }}"
         tasks_from: 03-firewall-lifecycle.yml
 
     - name: Test | Reproduce the package post-install service restart

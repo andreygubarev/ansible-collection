@@ -1,0 +1,45 @@
+---
+# -----------------------------------------------------------------------------
+# MOTD
+# -----------------------------------------------------------------------------
+# Keep worker SSH logins quiet; disable vendor news while leaving MOTD installed.
+# -----------------------------------------------------------------------------
+
+- name: MOTD | Find dynamic MOTD entries
+  become: true
+  ansible.builtin.find:
+    paths: /etc/update-motd.d
+    file_type: any
+  tags: motd
+  register: debian13__motd
+
+- name: MOTD | Remove dynamic MOTD entries
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  tags: motd
+  loop: "{{ debian13__motd.files }}"
+  when:
+    - debian13__motd.files | length > 0
+    - not item.isdir
+
+- name: MOTD | Ensure update-motd.d directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/update-motd.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  tags: motd
+
+- name: MOTD | Clear static MOTD file
+  become: true
+  ansible.builtin.copy:
+    content: ""
+    dest: /etc/motd
+    mode: "0644"
+    owner: root
+    group: root
+  tags: motd

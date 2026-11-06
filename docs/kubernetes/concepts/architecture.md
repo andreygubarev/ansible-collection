@@ -2,9 +2,9 @@
 
 ## Topology
 
-One Ubuntu 26.04 node runs the control plane, etcd, kubelet, containerd, and workloads. The control-plane taint is removed to allow workload scheduling.
+One Ubuntu 26.04 or Debian 13 node runs the control plane, etcd, kubelet, containerd, and workloads. The control-plane taint is removed to allow workload scheduling.
 
-Containerd uses systemd cgroups, `io.containerd.runc.v2`, and pause image `registry.k8s.io/pause:3.10.2`. Kubeconfig is copied to an existing operator account; no account is created.
+Both platforms use containerd 2.x with configuration version 3. Ubuntu uses its distro package; Debian uses Docker's `containerd.io` package without Docker Engine. Containerd uses systemd cgroups, `io.containerd.runc.v2`, and pause image `registry.k8s.io/pause:3.10.2`. Kubeconfig is copied to an existing operator account; no account is created.
 
 k9s is installed system-wide from the official, SHA256-verified Debian package for the host architecture. It uses the operator's existing kubeconfig; no additional credentials or cluster resources are created.
 

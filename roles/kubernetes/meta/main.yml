@@ -3,7 +3,7 @@ galaxy_info:
   role_name: kubernetes
   namespace: andreygubarev
   author: Adaptive Gears
-  description: Single-node Kubernetes provisioning for Ubuntu 26.04 hosts
+  description: Single-node Kubernetes provisioning for Ubuntu 26.04 and Debian 13
   company: Adaptive Gears
   license: Apache-2.0
   min_ansible_version: "2.20"
@@ -11,10 +11,14 @@ galaxy_info:
     - name: Ubuntu
       versions:
         - all
+    - name: Debian
+      versions:
+        - all
   galaxy_tags:
     - kubernetes
     - kubeadm
     - containerd
     - ubuntu
+    - debian
 
 dependencies: []

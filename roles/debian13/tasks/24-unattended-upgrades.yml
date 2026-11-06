@@ -1,0 +1,76 @@
+---
+# -----------------------------------------------------------------------------
+# Unattended upgrades
+# -----------------------------------------------------------------------------
+# Image pipelines may strip security timers; restore them but keep reboots/restarts
+# inside maintenance windows.
+# -----------------------------------------------------------------------------
+
+- name: Unattended upgrades | Install unattended upgrades package
+  become: true
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+  tags: [unattended_upgrades, packages]
+
+- name: Unattended upgrades | Enable periodic security upgrades
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      // Managed by ansible-role-debian13
+      // Source: https://github.com/andreygubarev/ansible-collection
+
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::Download-Upgradeable-Packages "1";
+      APT::Periodic::AutocleanInterval "7";
+    mode: "0644"
+  tags: unattended_upgrades
+
+- name: Unattended upgrades | Disable unattended reboot behavior
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/52debian13-unattended-upgrades
+    content: |
+      // Managed by ansible-role-debian13
+      // Source: https://github.com/andreygubarev/ansible-collection
+
+      // Reserve reboots/shutdown installs for maintenance automation, not background APT.
+      Unattended-Upgrade::Automatic-Reboot "false";
+      Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
+      Unattended-Upgrade::InstallOnShutdown "false";
+    mode: "0644"
+  tags: unattended_upgrades
+
+- name: Unattended upgrades | Create needrestart override directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/needrestart/conf.d
+    state: directory
+    mode: "0755"
+  tags: unattended_upgrades
+
+- name: Unattended upgrades | Disable needrestart automatic service restarts
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/needrestart/conf.d/99-debian13-no-auto-restarts.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      # List stale processes without restarting runtimes or workload services.
+      $nrconf{restart} = 'l';
+    mode: "0644"
+  tags: unattended_upgrades
+
+- name: Unattended upgrades | Enable and start APT maintenance timers
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  tags: unattended_upgrades
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer

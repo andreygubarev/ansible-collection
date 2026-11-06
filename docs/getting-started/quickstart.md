@@ -65,6 +65,6 @@ From a repository checkout on a machine with local Incus VM support:
 make test
 ```
 
-This creates a fresh VM, applies Ubuntu followed by Kubernetes and Terraform tooling, verifies all three roles, checks repeat application, and verifies persistence after reboot. It does not verify the host running the command. See [development](../../README.md#integration-tests) for requirements and failure diagnostics.
+This creates separate fresh Ubuntu and Debian VMs, applies each matching baseline followed by all shared roles, verifies all five suites, checks repeat application, and verifies persistence after reboot. It does not verify the host running the command. See [development](../../README.md#integration-tests) for requirements and failure diagnostics.
 
 [Configuration](../reference/configuration.md) · [Tasks](../../roles/ubuntu2604/tasks/main.yml)

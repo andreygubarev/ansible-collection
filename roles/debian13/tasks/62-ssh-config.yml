@@ -1,0 +1,74 @@
+---
+# -----------------------------------------------------------------------------
+# SSH configuration
+# -----------------------------------------------------------------------------
+# Validate the priority drop-in before applying the managed SSH policy.
+# -----------------------------------------------------------------------------
+
+- name: SSH | Hardening | Configure priority drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/00-debian13-hardening.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      # 00-* wins over later cloud-init/package snippets.
+      # Verbose auth logs aid SSH recovery without debug noise.
+      LogLevel VERBOSE
+
+      # Debian uses ssh.service for the administrative endpoint. Keep the
+      # daemon's listen port authoritative without enabling socket activation.
+      Port {{ debian13_ssh_port | int }}
+
+      # Use keys only while preserving PAM session policy.
+      LoginGraceTime 60
+      MaxAuthTries 3
+      PasswordAuthentication no
+      PermitEmptyPasswords no
+      # Preserve root key-based access when provisioning as root, regardless of the variable.
+      PermitRootLogin {{ (debian13__ssh_user == 'root' or debian13_ssh_allow_root_login | bool) | ternary('yes', 'no') }}
+      PubkeyAuthentication yes
+      UsePAM yes
+
+      # Disable legacy trust paths and user-controlled environment injection.
+      HostbasedAuthentication no
+      IgnoreRhosts yes
+      PermitUserEnvironment no
+
+      # Use Debian's OpenSSH crypto defaults so existing ECDSA and RSA 2048
+      # user keys and clients without hybrid post-quantum KEX remain compatible.
+
+      # Drop clients after three unanswered five-minute probes to clear lost
+      # connections; responsive clients stay connected even without user input.
+      ClientAliveCountMax 3
+      ClientAliveInterval 300
+
+      # Bound concurrent sessions and unauthenticated bursts to limit abuse.
+      MaxSessions 3
+      MaxStartups 10:30:60
+
+      # Avoid unaudited tunnels and desktop forwarding on workers.
+      AllowTcpForwarding {{ debian13_ssh_allow_tcp_forwarding | bool | ternary('yes', 'no') }}
+      Banner none
+      X11Forwarding no
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  tags: ssh
+  notify: Restart OpenSSH
+
+- name: SSH | Hardening | Validate sshd configuration
+  become: true
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+  tags: ssh
+
+- name: SSH | Ensure OpenSSH service is active
+  become: true
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: started
+    enabled: true
+  tags: ssh

@@ -3,15 +3,19 @@ galaxy_info:
   role_name: agents
   namespace: andreygubarev
   author: Andrey Gubarev
-  description: Pi harness, Claude Code, and persistent BB user service for Ubuntu 26.04
+  description: Pi, Claude Code, and persistent BB service for Ubuntu 26.04 and Debian 13
   license: Apache-2.0
   min_ansible_version: "2.20"
   platforms:
     - name: Ubuntu
       versions:
         - all
+    - name: Debian
+      versions:
+        - all
   galaxy_tags:
     - agents
     - ubuntu
+    - debian
 
 dependencies: []

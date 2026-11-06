@@ -1,0 +1,12 @@
+---
+# Mandatory on the first run; subsequent runs reuse the saved hostname.
+debian13_hostname: "{{ debian13__facts.get('hostname', '') }}"
+
+# Explicit inventory/playbook/CLI values override these saved-value fallbacks.
+debian13_disable_ipv6: "{{ debian13__facts.get('disable_ipv6', true) }}"
+debian13_locale: "{{ debian13__facts.get('locale', 'en_US.UTF-8') }}"
+debian13_timezone: "{{ debian13__facts.get('timezone', 'UTC') }}"
+# Applies only to non-root provisioning; root runs always retain root SSH access.
+debian13_ssh_allow_root_login: "{{ debian13__facts.get('ssh_allow_root_login', false) }}"
+debian13_ssh_allow_tcp_forwarding: "{{ debian13__facts.get('ssh_allow_tcp_forwarding', false) }}"
+debian13_ssh_port: "{{ debian13__facts.get('ssh_port', 22) }}"

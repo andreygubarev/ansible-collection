@@ -1,0 +1,51 @@
+---
+# -----------------------------------------------------------------------------
+# Locale
+# -----------------------------------------------------------------------------
+# Set a UTF-8 locale so minimal images do not leak C/POSIX into Unicode paths/logs.
+# -----------------------------------------------------------------------------
+
+# Minimal/cloud images may omit locales; install it before locale_gen.
+- name: Locale | Install locales package
+  become: true
+  ansible.builtin.apt:
+    name: locales
+    state: present
+  tags: [locale, packages]
+
+- name: Locale | Generate system locale
+  become: true
+  community.general.locale_gen:
+    name: "{{ debian13_locale }}"
+    state: present
+  tags: locale
+
+- name: Locale | Mark default locale management
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/locale.conf
+    line: "# Managed by ansible-role-debian13"
+    insertbefore: BOF
+    create: true
+    mode: "0644"
+  tags: locale
+
+- name: Locale | Record default locale source
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/locale.conf
+    line: "# Source: https://github.com/andreygubarev/ansible-collection"
+    insertafter: "^# Managed by ansible-role-debian13$"
+    create: true
+    mode: "0644"
+  tags: locale
+
+- name: Locale | Set default locale
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/locale.conf
+    regexp: "^LANG="
+    line: "LANG={{ debian13_locale }}"
+    create: true
+    mode: "0644"
+  tags: locale

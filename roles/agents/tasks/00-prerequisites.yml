@@ -2,16 +2,24 @@
 # -----------------------------------------------------------------------------
 # Prerequisite
 # -----------------------------------------------------------------------------
-# Use Ubuntu's Node.js packages rather than adding a third-party runtime source.
+# Use the signed NodeSource Node.js 24 LTS repository on both distributions.
 # Validate the target and release selectors before making system-wide changes.
 # -----------------------------------------------------------------------------
 
-- name: Prerequisite | Assert OS is Ubuntu 26.04
+- name: Prerequisite | Assert OS is supported
   ansible.builtin.assert:
     that:
-      - ansible_facts['distribution'] == 'Ubuntu'
-      - ansible_facts['distribution_version'] == '26.04'
-    fail_msg: "This role requires Ubuntu 26.04."
+      - >-
+        (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '26.04')
+        or (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] == '13')
+    fail_msg: "This role requires Ubuntu 26.04 or Debian 13."
+  tags: always
+
+- name: Prerequisite | Assert architecture is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['architecture'] in ['x86_64', 'aarch64']
+    fail_msg: "This role requires amd64 or arm64 architecture."
   tags: always
 
 - name: Prerequisite | Validate Pi version

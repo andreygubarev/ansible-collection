@@ -1,0 +1,3 @@
+---
+# Local facts supply fallbacks; public variables and their defaults remain in defaults/main.yml.
+debian13__facts: "{{ ansible_facts.get('ansible_local', {}).get('debian13', {}) }}"

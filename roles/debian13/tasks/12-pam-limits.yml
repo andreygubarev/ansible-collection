@@ -1,0 +1,27 @@
+---
+# -----------------------------------------------------------------------------
+# PAM limits
+# -----------------------------------------------------------------------------
+# Align login-session limits with the host descriptor and process ceilings.
+# -----------------------------------------------------------------------------
+
+- name: Kernel | Configure PAM limits
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/60-debian13-container.conf
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      # Keep PAM-launched sessions from retaining low descriptor defaults after
+      # raising kernel FD ceilings.
+      * soft nofile 65536
+      * hard nofile 65536
+      # Keep login shells and user services from hitting per-session limits before
+      # host PID capacity.
+      * soft nproc 65536
+      * hard nproc 65536
+    owner: root
+    group: root
+    mode: "0644"
+  tags: kernel

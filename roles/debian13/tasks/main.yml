@@ -1,0 +1,72 @@
+---
+- name: Prerequisite | Import checks
+  ansible.builtin.import_tasks: 00-prerequisites.yml
+
+- name: Configuration | Import desired settings
+  ansible.builtin.import_tasks: 01-configuration.yml
+
+- name: Hostname | Import configuration
+  ansible.builtin.import_tasks: 02-hostname.yml
+
+- name: Firewall | Import non-destructive service lifecycle
+  ansible.builtin.import_tasks: 03-firewall-lifecycle.yml
+
+- name: Kernel | Import modules
+  ansible.builtin.import_tasks: 10-kernel-modules.yml
+
+- name: Kernel | Import sysctls
+  ansible.builtin.import_tasks: 11-sysctl.yml
+
+- name: Kernel | Import PAM limits
+  ansible.builtin.import_tasks: 12-pam-limits.yml
+
+- name: Kernel | Import transparent hugepages policy
+  ansible.builtin.import_tasks: 13-transparent-hugepages.yml
+
+- name: Systemd | Import manager defaults
+  ansible.builtin.import_tasks: 14-systemd.yml
+
+- name: Swap | Import configuration
+  ansible.builtin.import_tasks: 15-swap.yml
+
+- name: APT | Import sources
+  ansible.builtin.import_tasks: 20-apt-sources.yml
+
+- name: APT | Import package cleanup
+  ansible.builtin.import_tasks: 22-package-cleanup.yml
+
+- name: APT | Import upgrades
+  ansible.builtin.import_tasks: 23-package-upgrade.yml
+
+- name: Unattended upgrades | Import configuration
+  ansible.builtin.import_tasks: 24-unattended-upgrades.yml
+
+- name: Logs | Import journald configuration
+  ansible.builtin.import_tasks: 30-journald.yml
+
+- name: Firewall | Import configuration
+  ansible.builtin.import_tasks: 40-firewall.yml
+
+- name: Packages | Import operational tools
+  ansible.builtin.import_tasks: 50-packages.yml
+
+- name: SSH | Import installation
+  ansible.builtin.import_tasks: 60-ssh-install.yml
+
+- name: SSH | Import host keys
+  ansible.builtin.import_tasks: 61-ssh-host-keys.yml
+
+- name: SSH | Import configuration
+  ansible.builtin.import_tasks: 62-ssh-config.yml
+
+- name: Locale | Import configuration
+  ansible.builtin.import_tasks: 70-locale.yml
+
+- name: Time | Import configuration
+  ansible.builtin.import_tasks: 71-time.yml
+
+- name: DNS | Import configuration
+  ansible.builtin.import_tasks: 72-dns.yml
+
+- name: MOTD | Import cleanup
+  ansible.builtin.import_tasks: 73-motd.yml

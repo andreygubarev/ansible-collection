@@ -1,5 +1,5 @@
 ---
-- name: Install agent tooling on the local Ubuntu 26.04 host
+- name: Install agent tooling on the local supported host
   hosts: localhost
   connection: local
   roles:

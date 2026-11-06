@@ -1,0 +1,42 @@
+---
+# -----------------------------------------------------------------------------
+# Debian archives
+# -----------------------------------------------------------------------------
+# Own the standard Debian archive entries, including cloud images that still use
+# sources.list. Leave unrelated third-party repositories under their owners.
+# -----------------------------------------------------------------------------
+
+- name: APT | Check for legacy archive configuration
+  become: true
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list
+  register: debian13__legacy_sources
+  tags: apt
+
+- name: APT | Disable duplicate legacy Debian archive entries
+  become: true
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: '^(deb(?:-src)?\s+https?://(?:deb\.debian\.org/debian(?:-security)?|security\.debian\.org/debian-security)/?\s+trixie(?:-updates|-security)?\s+.*)$'
+    replace: '# Managed in debian.sources: \1'
+  when: debian13__legacy_sources.stat.exists
+  tags: apt
+
+- name: APT | Configure Debian archive sources
+  become: true
+  ansible.builtin.template:
+    src: debian.sources.j2
+    dest: /etc/apt/sources.list.d/debian.sources
+    owner: root
+    group: root
+    mode: "0644"
+  register: debian13__apt_sources
+  tags: apt
+
+- name: APT | Update package cache
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ 0 if debian13__apt_sources is changed else 3600 }}"
+  changed_when: false
+  tags: apt

@@ -1,0 +1,11 @@
+---
+- name: Provision the local Debian 13 container-worker host
+  hosts: localhost
+  connection: local
+  pre_tasks:
+    - name: Local | Identify provisioning user
+      ansible.builtin.set_fact:
+        ansible_user: "{{ ansible_facts['user_id'] }}"
+      tags: always
+  roles:
+    - andreygubarev.com.debian13

@@ -74,7 +74,9 @@
         scope: user
         enabled: true
         daemon_reload: "{{ agents__bb_unit is changed }}"
-        state: "{{ 'restarted' if agents__bb_unit is changed or agents__bb_package is changed else 'started' }}"
+        state: >-
+          {{ 'restarted' if agents__bb_unit is changed or agents__bb_package is changed
+             or (agents__runtime_packages is defined and agents__runtime_packages is changed) else 'started' }}
       environment:
         XDG_RUNTIME_DIR: "/run/user/{{ agents__bb_user.uid }}"
         DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ agents__bb_user.uid }}/bus"

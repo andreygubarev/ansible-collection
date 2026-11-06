@@ -22,6 +22,40 @@ def grep_literal(value: str) -> str:
 
 
 # -----------------------------------------------------------------------------
+# Supported platforms
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("role", ("ubuntu2604", "debian13", "kubernetes", "terraform", "agents"))
+@pytest.mark.parametrize("distribution, version, major, allowed", (
+    ("Ubuntu", "26.04", "26", {"ubuntu2604", "kubernetes", "terraform", "agents"}),
+    ("Debian", "13", "13", {"debian13", "kubernetes", "terraform", "agents"}),
+    ("Debian", "13.7", "13", {"debian13", "kubernetes", "terraform", "agents"}),
+    ("Ubuntu", "24.04", "24", set()),
+    ("Debian", "12.9", "12", set()),
+))
+def test_platform_preflight_contract(role, distribution, version, major, allowed):
+    path = Path(__file__).resolve().parents[2] / role / "tasks/00-prerequisites.yml"
+    conditions = yaml.safe_load(path.read_text())[0]["ansible.builtin.assert"]["that"]
+    facts = {"distribution": distribution, "distribution_version": version, "distribution_major_version": major}
+    environment = Environment()
+    actual = all(environment.compile_expression(condition)(ansible_facts=facts) for condition in conditions)
+    assert actual is (role in allowed)
+
+
+@pytest.mark.parametrize("packages, accepted", (
+    ({}, True), ({"containerd.io": [{}]}, True), ({"containerd": [{}]}, False), ({"runc": [{}]}, False),
+))
+def test_debian_runtime_conflicts_require_explicit_migration(packages, accepted):
+    path = Path(__file__).resolve().parents[1] / "tasks/00-prerequisites.yml"
+    block = next(task["block"] for task in yaml.safe_load(path.read_text()) if "block" in task)
+    conditions = block[-1]["ansible.builtin.assert"]["that"]
+    environment = Environment()
+    actual = all(environment.compile_expression(condition)(ansible_facts={"packages": packages}) for condition in conditions)
+    assert actual is accepted
+
+
+# -----------------------------------------------------------------------------
 # Configuration and local facts
 # -----------------------------------------------------------------------------
 
@@ -290,7 +324,8 @@ def test_node_internal_ports_are_unreachable_from_test_runner(host, saved_settin
 
 
 def test_new_external_ssh_connection_is_preserved(host, saved_settings):
-    settings = json.loads(host.file("/etc/ansible/facts.d/ubuntu2604.fact").content_string)
+    baseline = {"ubuntu": "ubuntu2604", "debian": "debian13"}[host.system_info.distribution]
+    settings = json.loads(host.file(f"/etc/ansible/facts.d/{baseline}.fact").content_string)
     with socket.create_connection((saved_settings["advertise_address"], settings["ssh_port"]), timeout=3) as connection:
         assert connection.recv(256).startswith(b"SSH-2.0-")
 
@@ -400,7 +435,6 @@ def test_fstab_has_no_active_swap_entries(host):
 
 
 EXPECTED_CONTAINERD_PACKAGES = (
-    "containerd",
     "containernetworking-plugins",
 )
 
@@ -408,6 +442,22 @@ EXPECTED_CONTAINERD_PACKAGES = (
 @pytest.mark.parametrize("package", EXPECTED_CONTAINERD_PACKAGES)
 def test_containerd_package_is_installed(host, package):
     assert host.package(package).is_installed
+
+
+def test_containerd_package_and_version_match_platform_contract(host):
+    debian = host.system_info.distribution == "debian"
+    assert host.package("containerd.io" if debian else "containerd").is_installed
+    assert re.search(r" v?2[.]", host.check_output("containerd --version"))
+    if debian:
+        assert not host.package("containerd").is_installed
+        assert not host.package("runc").is_installed
+        assert not host.package("docker-ce").is_installed
+        source = host.file("/etc/apt/sources.list.d/kubernetes-containerd.sources")
+        assert source.contains(r"^Signed-By: /etc/apt/keyrings/kubernetes-docker[.]asc$")
+        assert source.contains(r"^Suites: trixie$")
+        assert host.file("/etc/apt/preferences.d/90-kubernetes-containerd").contains(r"^Pin: version 2[.][*]$")
+    else:
+        assert not host.file("/etc/apt/sources.list.d/kubernetes-containerd.sources").exists
 
 
 def test_containerd_service_is_active_and_enabled(host):

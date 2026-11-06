@@ -11,6 +11,7 @@ ANSIBLE_PLAYBOOK ?= uvx --from ansible-core ansible-playbook
 # Incus
 INCUS_NETWORK ?= incusbr0
 INCUS_STORAGE_POOL ?= default
+INCUS_DISTRIBUTIONS ?= ubuntu2604 debian13
 
 # Testinfra
 TESTINFRA_PYTEST ?= uvx --from pytest --with pytest-testinfra --with pytest-xdist --with ansible-core pytest
@@ -41,12 +42,14 @@ lint: deps ## Run ansible-lint against the collection
 
 .PHONY: syntax
 syntax: deps ## Check the installed collection playbooks syntax
-	ANSIBLE_COLLECTIONS_PATH=$(ANSIBLE_COLLECTIONS_PATH) $(ANSIBLE_PLAYBOOK) --syntax-check andreygubarev.com.ubuntu2604 andreygubarev.com.kubernetes andreygubarev.com.terraform andreygubarev.com.gitops andreygubarev.com.agents
+	ANSIBLE_COLLECTIONS_PATH=$(ANSIBLE_COLLECTIONS_PATH) $(ANSIBLE_PLAYBOOK) --syntax-check andreygubarev.com.ubuntu2604 andreygubarev.com.debian13 andreygubarev.com.kubernetes andreygubarev.com.terraform andreygubarev.com.gitops andreygubarev.com.agents
 
 .PHONY: test
-test: deps ## Test all roles in a fresh Incus VM
-	ANSIBLE_COLLECTIONS_PATH="$(ANSIBLE_COLLECTIONS_PATH)" \
-	ANSIBLE_PLAYBOOK="$(ANSIBLE_PLAYBOOK)" \
-	INCUS_NETWORK="$(INCUS_NETWORK)" INCUS_STORAGE_POOL="$(INCUS_STORAGE_POOL)" \
-	TESTINFRA_PYTEST="$(TESTINFRA_PYTEST)" TESTINFRA_WORKERS="$(TESTINFRA_WORKERS)" \
-	bash tests/incus.sh
+test: deps ## Test all roles in fresh Ubuntu and Debian Incus VMs
+	@set -e; for distribution in $(INCUS_DISTRIBUTIONS); do \
+		ANSIBLE_COLLECTIONS_PATH="$(ANSIBLE_COLLECTIONS_PATH)" \
+		ANSIBLE_PLAYBOOK="$(ANSIBLE_PLAYBOOK)" \
+		INCUS_NETWORK="$(INCUS_NETWORK)" INCUS_STORAGE_POOL="$(INCUS_STORAGE_POOL)" \
+		TESTINFRA_PYTEST="$(TESTINFRA_PYTEST)" TESTINFRA_WORKERS="$(TESTINFRA_WORKERS)" \
+		bash tests/incus.sh "$$distribution"; \
+	done

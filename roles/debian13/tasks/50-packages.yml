@@ -1,0 +1,29 @@
+---
+# -----------------------------------------------------------------------------
+# Packages
+# -----------------------------------------------------------------------------
+# Install a small day-two toolbox so incident response does not start with
+# package changes.
+# -----------------------------------------------------------------------------
+
+- name: Packages | Install operational tools
+  become: true
+  ansible.builtin.apt:
+    name:
+      - bind9-dnsutils
+      - curl
+      - exip
+      - htop
+      - iotop
+      - jq
+      - less
+      - lsof
+      - tcpdump
+      - tmux
+      - traceroute
+      - tree
+      - unzip
+      - wget
+    state: present
+    install_recommends: false
+  tags: packages

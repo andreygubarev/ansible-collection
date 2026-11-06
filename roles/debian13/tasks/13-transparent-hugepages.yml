@@ -1,0 +1,43 @@
+---
+# -----------------------------------------------------------------------------
+# Transparent hugepages
+# -----------------------------------------------------------------------------
+# Persist the opt-in hugepage policy through a boot-time systemd service.
+# -----------------------------------------------------------------------------
+
+# Keep THP opt-in: runtimes can request it, while databases and low-latency
+# services avoid surprise compaction. Use a one-shot because THP is sysfs-only.
+- name: Kernel | Create transparent hugepages policy service
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/transparent-hugepages-madvise.service
+    content: |
+      # Managed by ansible-role-debian13
+      # Source: https://github.com/andreygubarev/ansible-collection
+
+      [Unit]
+      Description=Set Transparent Hugepages to madvise
+      Documentation=https://github.com/andreygubarev/ansible-collection
+      After=multi-user.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'echo madvise | tee /sys/kernel/mm/transparent_hugepage/enabled'
+      # Stay active so Ansible sees the sysfs policy as converged.
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: "0644"
+  tags: kernel
+  register: debian13__thp_service
+
+- name: Kernel | Start transparent hugepages policy service
+  become: true
+  ansible.builtin.systemd_service:
+    name: transparent-hugepages-madvise
+    enabled: true
+    # Reload units only when the generated policy changes.
+    daemon_reload: "{{ debian13__thp_service.changed }}"
+    state: started
+  tags: kernel

@@ -1,0 +1,91 @@
+---
+# -----------------------------------------------------------------------------
+# Prerequisite
+# -----------------------------------------------------------------------------
+# Settle boot-time initialization and fail before mutation so unsupported images
+# do not get partial policy.
+# -----------------------------------------------------------------------------
+
+- name: Prerequisite | Assert OS is Debian 13
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == "Debian"
+      - ansible_facts['distribution_major_version'] == "13"
+    fail_msg: >-
+      This role requires Debian 13
+      (detected {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }})
+    success_msg: "OS check passed: Debian 13"
+  tags: always
+
+- name: Prerequisite | Assert architecture is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['architecture'] in ["x86_64", "aarch64"]
+    fail_msg: >-
+      This role requires amd64 or arm64 architecture
+      (detected {{ ansible_facts['architecture'] }})
+    success_msg: "Architecture check passed: {{ ansible_facts['architecture'] }}"
+  tags: always
+
+- name: Prerequisite | Read SSH user
+  ansible.builtin.set_fact:
+    debian13__ssh_user: >-
+      {{ ansible_user | default(ansible_ssh_user) }}
+  tags: ssh
+
+- name: Prerequisite | Read SSH user account
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ debian13__ssh_user }}"
+  tags: ssh
+
+- name: Prerequisite | Read SSH user authorized keys
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.getent_passwd[debian13__ssh_user][4] }}/.ssh/authorized_keys"
+  register: debian13__ssh_authorized_keys
+  tags: ssh
+
+- name: Prerequisite | Assert SSH hardening for password authentication
+  ansible.builtin.assert:
+    that:
+      - debian13__ssh_authorized_keys.stat.exists
+      - debian13__ssh_authorized_keys.stat.size | int > 0
+    fail_msg: >-
+      Refusing to disable SSH password authentication because the current Ansible
+      login user '{{ debian13__ssh_user }}' has no authorized_keys file.
+      Provision SSH keys for this user, connect as a keyed sudo user, or import
+      operator keys before applying this role.
+    success_msg: "SSH key access guardrail passed"
+  tags: ssh
+
+- name: Prerequisite | Get cloud-init
+  ansible.builtin.stat:
+    path: /usr/bin/cloud-init
+  register: debian13__cloud_init
+  tags: always
+
+- name: Prerequisite | Wait for cloud-init to finish
+  ansible.builtin.command:
+    argv:
+      - timeout
+      - "1800"
+      - /usr/bin/cloud-init
+      - status
+      - --wait
+  register: debian13__cloud_init_timeout
+  # This is a sequencing barrier, not cloud-init validation; rc=1 can mean cloud-init is done but recorded errors.
+  failed_when: debian13__cloud_init_timeout.rc not in [0, 1, 2]
+  changed_when: false
+  when: debian13__cloud_init.stat.exists
+  tags: always
+
+- name: Prerequisite | Report cloud-init completed with errors
+  ansible.builtin.debug:
+    msg: >-
+      cloud-init completed with errors before this role started. Continuing
+      because boot-time cloud-init APT work is no longer running; inspect
+      'cloud-init status --long' and /var/log/cloud-init.log for root cause.
+  when:
+    - debian13__cloud_init.stat.exists
+    - debian13__cloud_init_timeout.rc == 1
+  tags: always
