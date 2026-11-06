@@ -2,6 +2,9 @@
 - name: Prepare the former Ubuntu agent runtime on the disposable test VM
   hosts: incus_test
   become: true
+  vars:
+    agents_user: agent
+    agents__home: /home/agent
   tasks:
     - name: Test | Require the Ubuntu baseline
       ansible.builtin.assert:
@@ -39,15 +42,64 @@
         npm_config_allow_scripts: better-sqlite3,node-pty,@parcel/watcher
       register: agents__bb_package
 
-    - name: Test | Prepare the existing BB account
+    - name: Test | Prepare the existing agent account
       ansible.builtin.include_role:
         name: andreygubarev.com.agents
-        tasks_from: 30-bb-user.yml
+        tasks_from: 15-user.yml
+
+    - name: Test | Create the former service's unit directory
+      ansible.builtin.file:
+        path: /home/agent/.config/systemd/user
+        state: directory
+        owner: agent
+        group: agent
+        mode: "0700"
+
+    - name: Test | Write the former system-wide BB launcher unit
+      ansible.builtin.copy:
+        dest: /home/agent/.config/systemd/user/bb.service
+        content: |
+          [Unit]
+          Description=BB agent server
+          [Service]
+          Type=simple
+          WorkingDirectory=/home/agent
+          Environment=PATH=/usr/local/bin:/usr/bin:/bin
+          Environment=BB_DATA_DIR=/home/agent/.bb
+          ExecStart=/usr/local/bin/bb-app --server-bind-host 127.0.0.1 --no-in-app-updates
+          Restart=on-failure
+          RestartSec=5
+          [Install]
+          WantedBy=default.target
+        owner: agent
+        group: agent
+        mode: "0644"
+
+    - name: Test | Enable the former service's user manager at boot
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/loginctl
+          - enable-linger
+          - agent
+        creates: /var/lib/systemd/linger/agent
+
+    - name: Test | Start the former service's user manager
+      ansible.builtin.systemd_service:
+        name: "user@{{ agents__user.uid }}.service"
+        state: started
 
     - name: Test | Start BB with the distro runtime
-      ansible.builtin.include_role:
-        name: andreygubarev.com.agents
-        tasks_from: 50-bb-service.yml
+      become: true
+      become_user: agent
+      ansible.builtin.systemd_service:
+        name: bb.service
+        scope: user
+        enabled: true
+        state: started
+        daemon_reload: true
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ agents__user.uid }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ agents__user.uid }}/bus"
 
     - name: Test | Verify native add-ons work before the runtime transition
       ansible.builtin.command:

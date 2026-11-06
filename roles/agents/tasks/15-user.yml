@@ -1,0 +1,87 @@
+---
+# -----------------------------------------------------------------------------
+# User
+# -----------------------------------------------------------------------------
+# Keep applications, state, and provider credentials in one dedicated account.
+# Full sudo is intentional: trusted agents may administer the host, not just the
+# workspace. The private npm prefix lets applications update without using sudo.
+# -----------------------------------------------------------------------------
+
+- name: User | Configure the agent account
+  become: true
+  tags:
+    - pi
+    - claude-code
+    - bb
+  block:
+    - name: User | Create the primary group
+      ansible.builtin.group:
+        name: "{{ agents_user }}"
+        state: present
+
+    - name: User | Create the account with a locked password
+      ansible.builtin.user:
+        name: "{{ agents_user }}"
+        group: "{{ agents_user }}"
+        home: "{{ agents__home }}"
+        shell: /bin/bash
+        create_home: true
+        password_lock: true
+      register: agents__user
+
+    - name: User | Protect the home directory
+      ansible.builtin.file:
+        path: "{{ agents__home }}"
+        state: directory
+        owner: "{{ agents_user }}"
+        group: "{{ agents_user }}"
+        mode: "0700"
+
+    - name: User | Allow passwordless host administration
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/90-agents-{{ agents_user }}"
+        content: |
+          # Source: https://github.com/andreygubarev/ansible-collection
+          {{ agents_user }} ALL=(ALL:ALL) NOPASSWD: ALL
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: User | Create private application directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ agents_user }}"
+        group: "{{ agents_user }}"
+        mode: "0700"
+      loop:
+        - "{{ agents__home }}/.bb"
+        - "{{ agents__home }}/.local"
+        - "{{ agents__home }}/.local/bin"
+        - "{{ agents__home }}/.local/lib"
+
+    - name: User | Configure user-local npm installations and native add-ons
+      ansible.builtin.lineinfile:
+        path: "{{ agents__home }}/.npmrc"
+        regexp: "^{{ item.option }}\\s*="
+        line: "{{ item.option }}={{ item.value }}"
+        create: true
+        owner: "{{ agents_user }}"
+        group: "{{ agents_user }}"
+        mode: "0600"
+      diff: false
+      loop:
+        - option: prefix
+          value: "{{ agents__home }}/.local"
+        - option: allow-scripts
+          value: better-sqlite3,node-pty,@parcel/watcher,@anthropic-ai/claude-code
+
+    - name: User | Prefer user-local commands in login shells
+      ansible.builtin.lineinfile:
+        path: "{{ agents__home }}/.profile"
+        line: 'export PATH="$HOME/.local/bin:$PATH"'
+        create: true
+        owner: "{{ agents_user }}"
+        group: "{{ agents_user }}"
+        mode: "0644"

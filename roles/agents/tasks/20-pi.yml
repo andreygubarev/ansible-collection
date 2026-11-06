@@ -2,9 +2,9 @@
 # -----------------------------------------------------------------------------
 # Pi
 # -----------------------------------------------------------------------------
-# Use Pi's documented npm installation with lifecycle scripts disabled. Install
-# into /usr/local so any account can invoke the harness, while credentials and
-# sessions remain in each caller's home and are never provisioned by this role.
+# Use Pi's documented npm installation with lifecycle scripts disabled. Keep
+# the application in the agent account's npm prefix so pi update needs no sudo.
+# Credentials and sessions remain user-managed and are never provisioned here.
 # -----------------------------------------------------------------------------
 
 - name: Pi | Query stable releases in the selected major series
@@ -29,8 +29,9 @@
          if agents_pi_version == '1.x' else agents_pi_version }}
   tags: pi
 
-- name: Pi | Install the selected harness system-wide
+- name: Pi | Install the selected harness for the agent account
   become: true
+  become_user: "{{ agents_user }}"
   community.general.npm:
     name: "@earendil-works/pi-coding-agent"
     version: "{{ agents__pi_version }}"
@@ -39,5 +40,7 @@
     executable: /usr/bin/npm
     state: present
   environment:
-    npm_config_prefix: /usr/local
+    HOME: "{{ agents__home }}"
+    PATH: "{{ agents__home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    npm_config_prefix: "{{ agents__home }}/.local"
   tags: pi

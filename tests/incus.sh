@@ -183,3 +183,29 @@ fi
 echo 'Checking persistence after reboot'
 "${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/reboot.yml
 verify
+
+echo 'Checking an overridden agent account and user-local updates'
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml
+verify_agents() {
+    "${pytest[@]}" -n "$TESTINFRA_WORKERS" --dist=worksteal \
+        --hosts='ansible://testvm?controlpersist=300&timeout=30' \
+        --ansible-inventory="$workdir/inventory.yml" --sudo --agents-user=worker roles/agents/tests
+}
+verify_agents
+
+echo 'Checking explicit BB version pins disable in-app updates'
+bb_version=$(incus --force-local exec "$vm" -T -- /usr/bin/node -p \
+    'require("/home/worker/.local/lib/node_modules/bb-app/package.json").version')
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml -e "agents_bb_version=$bb_version"
+incus --force-local exec "$vm" -T -- sudo -iu worker bb updates app status --json | \
+    python3 -c 'import json, sys; status = json.load(sys.stdin); assert status["support"]["kind"] != "supported"; assert status["current"]["version"] == sys.argv[1]' "$bb_version"
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml
+verify_agents
+
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml | tee "$workdir/agents-user-idempotence.log"
+if ! grep -Eq '^testvm[[:space:]]*:.*changed=0[[:space:]]' "$workdir/agents-user-idempotence.log"; then
+    echo 'The overridden account must also report changed=0 on repeat application.' >&2
+    exit 1
+fi
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/reboot.yml
+verify_agents

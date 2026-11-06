@@ -5,17 +5,17 @@
 - name: Packages | Import Node.js runtime
   ansible.builtin.import_tasks: 10-packages.yml
 
+- name: User | Import agent account
+  ansible.builtin.import_tasks: 15-user.yml
+
 - name: Pi | Import installation
   ansible.builtin.import_tasks: 20-pi.yml
 
 - name: Claude Code | Import installation
   ansible.builtin.import_tasks: 21-claude-code.yml
 
-- name: BB user | Import service account
-  ansible.builtin.import_tasks: 30-bb-user.yml
-
 - name: Pi Web Access | Import user package installation
-  ansible.builtin.import_tasks: 31-pi-web-access.yml
+  ansible.builtin.import_tasks: 30-pi-web-access.yml
 
 - name: BB | Import installation
   ansible.builtin.import_tasks: 40-bb-install.yml

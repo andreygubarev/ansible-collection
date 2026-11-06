@@ -6,8 +6,8 @@
 # It bundles npm and keeps the runtime managed by APT without shell hooks.
 # Require the vendor version so existing distro packages are upgraded too.
 # BB's native add-ons may need compilation; its user service needs a D-Bus session.
-# POSIX ACL tools let Ansible share temporary modules with bb when switching
-# from another unprivileged user, including local runs without pipelining.
+# POSIX ACL tools let Ansible share temporary modules with the agent account
+# when switching from another unprivileged user, including without pipelining.
 # -----------------------------------------------------------------------------
 
 # Scope the vendor key to this repository and verify its content before APT
