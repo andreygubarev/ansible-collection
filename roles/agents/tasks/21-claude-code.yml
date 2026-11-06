@@ -3,7 +3,7 @@
 # Claude Code
 # -----------------------------------------------------------------------------
 # Resolve latest before installation to avoid reinstalling unchanged releases.
-# Keep the CLI root-owned and available to BB without shell initialization; its
+# Keep the CLI user-owned and available to BB without shell initialization; its
 # postinstall script links the platform binary supplied by optional dependencies.
 # Authentication and user settings are deliberately left to the caller.
 # -----------------------------------------------------------------------------
@@ -29,8 +29,9 @@
          if agents_claude_code_version == 'latest' else agents_claude_code_version }}
   tags: claude-code
 
-- name: Claude Code | Install the CLI system-wide
+- name: Claude Code | Install the CLI for the agent account
   become: true
+  become_user: "{{ agents_user }}"
   community.general.npm:
     name: "@anthropic-ai/claude-code"
     version: "{{ agents__claude_code_version }}"
@@ -39,6 +40,8 @@
     executable: /usr/bin/npm
     state: present
   environment:
-    npm_config_prefix: /usr/local
+    HOME: "{{ agents__home }}"
+    PATH: "{{ agents__home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    npm_config_prefix: "{{ agents__home }}/.local"
     npm_config_allow_scripts: "@anthropic-ai/claude-code"
   tags: claude-code

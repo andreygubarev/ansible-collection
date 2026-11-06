@@ -109,12 +109,6 @@ verify() {
         "roles/$baseline/tests" roles/kubernetes/tests roles/terraform/tests roles/gitops/tests roles/agents/tests
 }
 
-# Also exercise the previous Ubuntu runtime policy with existing native add-ons.
-# Debian covers installation without a pre-existing Node.js runtime.
-if [[ "$baseline" == ubuntu2604 ]]; then
-    "${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-runtime-upgrade.yml
-fi
-
 echo "Applying $baseline, Kubernetes, Terraform tooling, GitOps, and agents to the fresh VM"
 apply -e "${baseline}_hostname=$vm" -e "kubernetes_cluster_name=$vm" \
     -e gitops_git_user_name=Incus -e gitops_git_user_email=incus@example.invalid
@@ -183,3 +177,29 @@ fi
 echo 'Checking persistence after reboot'
 "${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/reboot.yml
 verify
+
+echo 'Checking an overridden agent account and user-local updates'
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml
+verify_agents() {
+    "${pytest[@]}" -n "$TESTINFRA_WORKERS" --dist=worksteal \
+        --hosts='ansible://testvm?controlpersist=300&timeout=30' \
+        --ansible-inventory="$workdir/inventory.yml" --sudo --agents-user=worker roles/agents/tests
+}
+verify_agents
+
+echo 'Checking explicit BB version pins disable in-app updates'
+bb_version=$(incus --force-local exec "$vm" -T -- /usr/bin/node -p \
+    'require("/home/worker/.local/lib/node_modules/bb-app/package.json").version')
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml -e "agents_bb_version=$bb_version"
+incus --force-local exec "$vm" -T -- sudo -iu worker bb updates app status --json | \
+    python3 -c 'import json, sys; status = json.load(sys.stdin); assert status["support"]["kind"] != "supported"; assert status["current"]["version"] == sys.argv[1]' "$bb_version"
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml
+verify_agents
+
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-user.yml | tee "$workdir/agents-user-idempotence.log"
+if ! grep -Eq '^testvm[[:space:]]*:.*changed=0[[:space:]]' "$workdir/agents-user-idempotence.log"; then
+    echo 'The overridden account must also report changed=0 on repeat application.' >&2
+    exit 1
+fi
+"${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/reboot.yml
+verify_agents

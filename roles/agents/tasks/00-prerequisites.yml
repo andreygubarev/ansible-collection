@@ -22,6 +22,20 @@
     fail_msg: "This role requires amd64 or arm64 architecture."
   tags: always
 
+- name: Prerequisite | Validate the agent account name
+  ansible.builtin.assert:
+    that:
+      - agents_user is string
+      - agents_user is match('^[a-z_][a-z0-9_-]{0,31}$')
+      - agents_user != 'root'
+    fail_msg: "agents_user must be a non-root Linux account name of at most 32 characters."
+  tags: always
+
+- name: Prerequisite | Resolve the agent home directory
+  ansible.builtin.set_fact:
+    agents__home: "/home/{{ agents_user }}"
+  tags: always
+
 - name: Prerequisite | Validate Pi version
   ansible.builtin.assert:
     that:

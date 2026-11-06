@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Changed
+- **User-local agents**: Install Pi, Claude Code, and BB under the configurable `agents_user` account, defaulting to `agent`, so applications can update without sudo. Enable BB in-app updates unless its version is pinned. Keep Node.js system-wide.
+
 ## [2026.11.1] - 2026-11-06
 
 ### Added

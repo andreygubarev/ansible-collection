@@ -1,0 +1,25 @@
+---
+- name: Verify an overridden agent account on the disposable test VM
+  hosts: incus_test
+  vars:
+    agents_user: worker
+    ansible_pipelining: false
+  pre_tasks:
+    - name: Test | Read the default agent account UID
+      ansible.builtin.command: /usr/bin/id -u agent
+      register: test_agent_uid
+      changed_when: false
+
+    - name: Test | Stop the default account's BB service before testing another owner
+      become: true
+      become_user: agent
+      ansible.builtin.systemd_service:
+        name: bb.service
+        scope: user
+        state: stopped
+        enabled: false
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ test_agent_uid.stdout }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ test_agent_uid.stdout }}/bus"
+  roles:
+    - andreygubarev.com.agents

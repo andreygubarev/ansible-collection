@@ -24,10 +24,10 @@
   roles:
     - andreygubarev.com.gitops
 
-- name: Install the Pi harness
+- name: Install user-local agent applications
   hosts: incus_test
   vars:
-    # Exercise temporary-file ACL sharing when becoming the unprivileged bb user.
+    # Exercise temporary-file ACL sharing when becoming the unprivileged agent user.
     ansible_pipelining: false
   roles:
     - andreygubarev.com.agents

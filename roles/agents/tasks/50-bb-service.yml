@@ -15,17 +15,17 @@
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-        owner: bb
-        group: bb
+        owner: "{{ agents_user }}"
+        group: "{{ agents_user }}"
         mode: "0700"
       loop:
-        - /home/bb/.config
-        - /home/bb/.config/systemd
-        - /home/bb/.config/systemd/user
+        - "{{ agents__home }}/.config"
+        - "{{ agents__home }}/.config/systemd"
+        - "{{ agents__home }}/.config/systemd/user"
 
     - name: BB service | Write the user unit
       ansible.builtin.copy:
-        dest: /home/bb/.config/systemd/user/bb.service
+        dest: "{{ agents__home }}/.config/systemd/user/bb.service"
         content: |
           # Source: https://github.com/andreygubarev/ansible-collection
           [Unit]
@@ -33,17 +33,17 @@
 
           [Service]
           Type=simple
-          WorkingDirectory=/home/bb
-          Environment=PATH=/usr/local/bin:/usr/bin:/bin
-          Environment=BB_DATA_DIR=/home/bb/.bb
-          ExecStart=/usr/local/bin/bb-app --server-bind-host 127.0.0.1 --no-in-app-updates
+          WorkingDirectory={{ agents__home }}
+          Environment=PATH={{ agents__home }}/.local/bin:/usr/local/bin:/usr/bin:/bin
+          Environment=BB_DATA_DIR={{ agents__home }}/.bb
+          ExecStart=%h/.local/bin/bb-app --server-bind-host 127.0.0.1{{ ' --bundled --no-in-app-updates' if agents_bb_version != 'latest' else '' }}
           Restart=on-failure
           RestartSec=5
 
           [Install]
           WantedBy=default.target
-        owner: bb
-        group: bb
+        owner: "{{ agents_user }}"
+        group: "{{ agents_user }}"
         mode: "0644"
       register: agents__bb_unit
 
@@ -52,23 +52,23 @@
         argv:
           - /usr/bin/loginctl
           - enable-linger
-          - bb
-        creates: /var/lib/systemd/linger/bb
+          - "{{ agents_user }}"
+        creates: "/var/lib/systemd/linger/{{ agents_user }}"
 
     - name: BB service | Start the user manager
       ansible.builtin.systemd_service:
-        name: "user@{{ agents__bb_user.uid }}.service"
+        name: "user@{{ agents__user.uid }}.service"
         state: started
 
     - name: BB service | Wait for the user bus
       ansible.builtin.wait_for:
-        path: "/run/user/{{ agents__bb_user.uid }}/bus"
+        path: "/run/user/{{ agents__user.uid }}/bus"
         timeout: 30
       when: not ansible_check_mode
 
     - name: BB service | Enable and start the server
       become: true
-      become_user: bb
+      become_user: "{{ agents_user }}"
       ansible.builtin.systemd_service:
         name: bb.service
         scope: user
@@ -78,8 +78,8 @@
           {{ 'restarted' if agents__bb_unit is changed or agents__bb_package is changed
              or (agents__runtime_packages is defined and agents__runtime_packages is changed) else 'started' }}
       environment:
-        XDG_RUNTIME_DIR: "/run/user/{{ agents__bb_user.uid }}"
-        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ agents__bb_user.uid }}/bus"
+        XDG_RUNTIME_DIR: "/run/user/{{ agents__user.uid }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ agents__user.uid }}/bus"
 
     - name: BB service | Wait for the local web interface
       ansible.builtin.uri:

@@ -4,7 +4,8 @@
 # -----------------------------------------------------------------------------
 # Resolve latest to an exact version so unchanged runs do not reinstall BB.
 # Unlike Pi, BB needs install scripts for its native SQLite, PTY and watcher
-# add-ons. Keep the installation root-owned, separate from mutable user state.
+# add-ons. Use the agent account's npm prefix so npm and in-app updates need
+# no sudo; BB's database and provider credentials remain outside the package.
 # -----------------------------------------------------------------------------
 
 - name: BB | Query the latest stable server release
@@ -28,8 +29,9 @@
          if agents_bb_version == 'latest' else agents_bb_version }}
   tags: bb
 
-- name: BB | Install the server system-wide with native add-ons
+- name: BB | Install the server for the agent account with native add-ons
   become: true
+  become_user: "{{ agents_user }}"
   community.general.npm:
     name: bb-app
     version: "{{ agents__bb_version }}"
@@ -38,7 +40,9 @@
     executable: /usr/bin/npm
     state: present
   environment:
-    npm_config_prefix: /usr/local
+    HOME: "{{ agents__home }}"
+    PATH: "{{ agents__home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    npm_config_prefix: "{{ agents__home }}/.local"
     npm_config_allow_scripts: better-sqlite3,node-pty,@parcel/watcher
   register: agents__bb_package
   tags: bb

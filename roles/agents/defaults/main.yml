@@ -1,4 +1,7 @@
 ---
+# Dedicated account for agent applications, state, and credentials.
+agents_user: agent
+
 # Follow stable Pi 1.x releases for plugin compatibility without crossing to 2.x.
 agents_pi_version: "1.x"
 
@@ -8,5 +11,5 @@ agents_claude_code_version: "latest"
 # Follow stable BB releases; an exact version can be supplied to pin the server.
 agents_bb_version: "latest"
 
-# Install the web tools for the BB account; exact versions can be pinned.
+# Install the web tools for the agent account; exact versions can be pinned.
 agents_pi_web_access_version: "latest"

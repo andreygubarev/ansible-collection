@@ -28,12 +28,12 @@
          if agents_pi_web_access_version == 'latest' else agents_pi_web_access_version }}
   tags: pi
 
-- name: Pi Web Access | Install the package for the BB account
+- name: Pi Web Access | Install the package for the agent account
   become: true
-  become_user: bb
+  become_user: "{{ agents_user }}"
   environment:
-    HOME: /home/bb
-    PATH: /usr/local/bin:/usr/bin:/bin
+    HOME: "{{ agents__home }}"
+    PATH: "{{ agents__home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
   tags: pi
   block:
     - name: Pi Web Access | Check the package declaration and installed version
@@ -63,10 +63,10 @@
     - name: Pi Web Access | Install and register the selected version
       ansible.builtin.command:
         argv:
-          - /usr/local/bin/pi
+          - "{{ agents__home }}/.local/bin/pi"
           - install
           - "npm:pi-web-access@{{ agents__pi_web_access_version }}"
-        chdir: /home/bb
+        chdir: "{{ agents__home }}"
       environment:
         npm_config_ignore_scripts: "true"
       when: agents__pi_web_access_status.rc == 1
