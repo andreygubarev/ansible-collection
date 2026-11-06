@@ -16,8 +16,6 @@ Set `agents_user` to choose another account. The role creates its matching prima
 
 **The account has unrestricted passwordless sudo (`NOPASSWD: ALL`). Its agents can obtain root. It is for trusted workloads, not a security sandbox.** Application updates do not need those privileges.
 
-To keep an existing installation under `bb`, pass `-e agents_user=bb`. The role installs user-local commands and updates the existing service without moving its state or credentials. It leaves old system-wide npm packages untouched. Selecting another account when the former `/home/bb/.config/systemd/user/bb.service` exists fails before installation. Account renaming, state migration, and removal of the old service are manual.
-
 ## Versions and updates
 
 - `agents_pi_version` defaults to `1.x`, selecting the newest stable Pi 1.x. An exact stable `1.x.y` version pins the npm installation.

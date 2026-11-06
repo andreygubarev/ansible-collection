@@ -25,6 +25,11 @@ def test_node_24_lts_uses_the_scoped_nodesource_repository(host):
     assert source.contains(r"^Signed-By: /etc/apt/keyrings/agents-nodesource[.]asc$")
 
 
+@pytest.mark.parametrize("command", ("pi", "claude", "bb", "bb-app"))
+def test_agent_commands_are_not_installed_system_wide(host, command):
+    assert not host.file(f"/usr/local/bin/{command}").exists
+
+
 @pytest.fixture
 def pi_package(agents_home):
     return f"{agents_home}/.local/lib/node_modules/@earendil-works/pi-coding-agent"

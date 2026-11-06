@@ -36,25 +36,6 @@
     agents__home: "/home/{{ agents_user }}"
   tags: always
 
-- name: Prerequisite | Check for the former BB service account
-  become: true
-  ansible.builtin.stat:
-    path: /home/bb/.config/systemd/user/bb.service
-  register: agents__legacy_bb_service
-  when: agents_user != 'bb'
-  tags: always
-
-- name: Prerequisite | Require an explicit account migration
-  ansible.builtin.assert:
-    that:
-      - not agents__legacy_bb_service.stat.exists
-    fail_msg: >-
-      An existing BB service belongs to bb. Set agents_user=bb to keep its state
-      and install user-local applications, or migrate the account and service
-      explicitly before selecting a different agents_user.
-  when: agents_user != 'bb'
-  tags: always
-
 - name: Prerequisite | Validate Pi version
   ansible.builtin.assert:
     that:

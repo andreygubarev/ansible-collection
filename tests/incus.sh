@@ -109,12 +109,6 @@ verify() {
         "roles/$baseline/tests" roles/kubernetes/tests roles/terraform/tests roles/gitops/tests roles/agents/tests
 }
 
-# Also exercise the previous Ubuntu runtime policy with existing native add-ons.
-# Debian covers installation without a pre-existing Node.js runtime.
-if [[ "$baseline" == ubuntu2604 ]]; then
-    "${playbook[@]}" -i "$workdir/inventory.yml" tests/playbooks/agents-runtime-upgrade.yml
-fi
-
 echo "Applying $baseline, Kubernetes, Terraform tooling, GitOps, and agents to the fresh VM"
 apply -e "${baseline}_hostname=$vm" -e "kubernetes_cluster_name=$vm" \
     -e gitops_git_user_name=Incus -e gitops_git_user_email=incus@example.invalid

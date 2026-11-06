@@ -4,7 +4,6 @@
 # -----------------------------------------------------------------------------
 # Use the same NodeSource Node.js 24 LTS package on both supported distributions.
 # It bundles npm and keeps the runtime managed by APT without shell hooks.
-# Require the vendor version so existing distro packages are upgraded too.
 # BB's native add-ons may need compilation; its user service needs a D-Bus session.
 # POSIX ACL tools let Ansible share temporary modules with the agent account
 # when switching from another unprivileged user, including without pipelining.
