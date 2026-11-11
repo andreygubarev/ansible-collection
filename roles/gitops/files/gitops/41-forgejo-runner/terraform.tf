@@ -24,13 +24,13 @@ provider "kustomization" {
 variable "runner_version" {
   description = "Official Forgejo Runner image version."
   type        = string
-  default     = "13.2.0"
+  default     = "13.2.1"
 }
 
 variable "dind_version" {
   description = "Official Docker-in-Docker image version."
   type        = string
-  default     = "29.9.1"
+  default     = "29.9.3"
 }
 
 variable "forgejo_url" {

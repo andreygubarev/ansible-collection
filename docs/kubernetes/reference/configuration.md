@@ -13,7 +13,7 @@
 | `kubernetes_apiserver_gogc` | `50` | API server Go GC target; empty string uses upstream default |
 | `kubernetes_apiserver_gomemlimit` | Empty | Optional API server Go memory limit, e.g. `1536MiB` |
 | `kubernetes_flannel_manifest_url` | [Flannel v0.28.10 manifest](https://github.com/flannel-io/flannel/releases/download/v0.28.10/kube-flannel.yml) | Applied only when Flannel is absent |
-| `kubernetes_metrics_server_version` | `v0.9.0` | Release applied on installation or image-version drift |
+| `kubernetes_metrics_server_version` | `v0.9.1` | Release applied on installation or image-version drift |
 | `kubernetes_k9s_version` | `0.51.0` | Exact k9s release without a `v` prefix; upstream Debian package verified with SHA256 |
 | `kubernetes_coredns_rewrites` | `{}` | Mapping of exact canonical hostnames to internal DNS names; applies to cluster DNS clients |
 

@@ -24,7 +24,7 @@ provider "kustomization" {
 variable "cert_manager_version" {
   description = "cert-manager chart version."
   type        = string
-  default     = "v1.21.2"
+  default     = "v1.21.3"
 }
 
 # ---------------------------------------------------------------------------

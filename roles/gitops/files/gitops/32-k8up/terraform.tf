@@ -24,7 +24,7 @@ provider "kustomization" {
 variable "k8up_version" {
   description = "K8up chart and CRD release version, not the operator image version."
   type        = string
-  default     = "4.10.0"
+  default     = "4.10.1"
 }
 
 variable "b2_endpoint" {

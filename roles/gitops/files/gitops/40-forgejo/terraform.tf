@@ -24,7 +24,7 @@ provider "kustomization" {
 variable "forgejo_version" {
   description = "Forgejo Helm chart version, not the application version."
   type        = string
-  default     = "17.3.1"
+  default     = "17.3.2"
 }
 
 variable "forgejo_hostname" {

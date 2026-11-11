@@ -167,7 +167,7 @@ def test_scaffold_file_is_user_owned(host, workspace, name):
     assert item.mode == 0o644
 
 
-@pytest.mark.parametrize("name, version", ((".opentofu-version", "1.12.8"), (".terragrunt-version", "1.1.6")))
+@pytest.mark.parametrize("name, version", ((".opentofu-version", "1.12.12"), (".terragrunt-version", "1.1.6")))
 def test_project_version_is_pinned(host, workspace, name, version):
     _user, directory = workspace
     assert host.file(f"{directory}/{name}").content_string.strip() == version
@@ -281,7 +281,7 @@ def test_workload_inherits_absolute_state_backend(name):
 
 def test_k8up_uses_matching_crds_and_secret_backed_credentials():
     text = (Path(__file__).resolve().parents[1] / "files/gitops/32-k8up/terraform.tf").read_text()
-    assert 'default     = "4.10.0"' in text
+    assert 'default     = "4.10.1"' in text
     assert 'k8up-${var.k8up_version}/k8up-crd.yaml' in text
     assert 'version      = var.k8up_version' in text
     assert 'skipWithoutAnnotation = true' in text

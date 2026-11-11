@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [2026.11.3] - 2026-11-11
+
+### Changed
+- Update Metrics Server to `v0.9.1` and the GitOps OpenTofu pin to `1.12.12`.
+- Update all three Istio charts to `1.31.4`, cert-manager to `v1.21.3`, K8up chart/CRDs to `4.10.1` (operator `v2.16.1`), Forgejo chart to `17.3.2`, Forgejo Runner to `13.2.1`, and Docker-in-Docker to `29.9.3`.
+- Update community.general to `13.5.1`, the SHA-pinned setup-uv action to `v10.3.3`, and the curl integration-test image to `8.23.0`.
+
 ## [2026.11.2] - 2026-11-06
 
 ### Changed

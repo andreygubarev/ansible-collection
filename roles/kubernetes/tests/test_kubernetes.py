@@ -71,7 +71,7 @@ DEFAULT_CLUSTER_SETTINGS = {
     "apiserver_gogc": "50",
     "apiserver_gomemlimit": "",
     "flannel_manifest_url": "https://github.com/flannel-io/flannel/releases/download/v0.28.10/kube-flannel.yml",
-    "metrics_server_version": "v0.9.0",
+    "metrics_server_version": "v0.9.1",
     "k9s_version": "0.51.0",
     "coredns_rewrites": {},
 }
@@ -345,7 +345,7 @@ def test_pods_retain_api_dns_and_kubelet_access(host, saved_settings):
     )
     try:
         host.check_output(
-            kubectl + " run %s --image=curlimages/curl:8.12.1 --restart=Never --command -- sh -ec %s",
+            kubectl + " run %s --image=curlimages/curl:8.23.0 --restart=Never --command -- sh -ec %s",
             name, script,
         )
         result = host.run(kubectl + " wait --for=jsonpath='{.status.phase}'=Succeeded pod/%s --timeout=180s", name)

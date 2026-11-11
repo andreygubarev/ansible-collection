@@ -24,7 +24,7 @@ provider "kustomization" {
 variable "istio_version" {
   description = "Istio chart version, matching the istio-base workload."
   type        = string
-  default     = "1.31.2"
+  default     = "1.31.4"
 }
 
 # ---------------------------------------------------------------------------

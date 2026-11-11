@@ -1,7 +1,7 @@
 ---
 namespace: andreygubarev
 name: com
-version: 2026.11.2
+version: 2026.11.3
 readme: README.md
 authors:
   - Andrey Gubarev
@@ -18,7 +18,7 @@ tags:
   - opentofu
   - terragrunt
 dependencies:
-  community.general: "13.5.0"
+  community.general: "13.5.1"
 repository: https://github.com/andreygubarev/ansible-collection
 build_ignore:
   - .ansible

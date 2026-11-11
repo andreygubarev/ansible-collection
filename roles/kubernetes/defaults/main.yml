@@ -15,7 +15,7 @@ kubernetes_apiserver_gomemlimit: "{{ kubernetes__facts.get('apiserver_gomemlimit
 kubernetes_flannel_manifest_url: >-
   {{ kubernetes__facts.get('flannel_manifest_url',
      'https://github.com/flannel-io/flannel/releases/download/v0.28.10/kube-flannel.yml') }}
-kubernetes_metrics_server_version: "{{ kubernetes__facts.get('metrics_server_version', 'v0.9.0') }}"
+kubernetes_metrics_server_version: "{{ kubernetes__facts.get('metrics_server_version', 'v0.9.1') }}"
 kubernetes_k9s_version: "{{ kubernetes__facts.get('k9s_version', '0.51.0') }}"
 
 # Resolve selected hostnames internally without changing their public URLs or TLS.
